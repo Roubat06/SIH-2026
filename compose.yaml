@@ -1,12 +1,14 @@
 services:
   mongo:
-    image: mongo:8.0
+    image: mongo:8.0.29
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: sentinel
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
+      MONGO_INITDB_ROOT_USERNAME: sentinel_admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in .env}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?Set MONGO_APP_PASSWORD in .env}
     volumes:
       - mongo_data:/data/db
+      - ./deploy/mongo-init.js:/docker-entrypoint-initdb.d/10-create-app-user.js:ro
     # Database stays on the private container network. Do not publish port 27017.
     healthcheck:
       test:
@@ -18,7 +20,7 @@ services:
     build: .
     restart: unless-stopped
     environment: &backend_env
-      MONGO_URI: mongodb://sentinel:${MONGO_PASSWORD}@mongo:27017/bitcoin_sentinel?authSource=admin
+      MONGO_URI: mongodb://sentinel_app:${MONGO_APP_PASSWORD}@mongo:27017/bitcoin_sentinel?authSource=bitcoin_sentinel
       MONGO_DB: bitcoin_sentinel
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
@@ -27,6 +29,13 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
   worker:
     build: .
     restart: unless-stopped

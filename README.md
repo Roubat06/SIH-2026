@@ -35,9 +35,10 @@ Requires Docker Engine with Compose. First installation/build needs internet acc
    ```bash
    cp .env.example .env
    python3 -c 'import secrets; print(secrets.token_hex(32))'
+   python3 -c 'import secrets; print(secrets.token_hex(32))'
    ```
 
-   Paste the generated value into `MONGO_PASSWORD` in `.env`. Use a hex value so the MongoDB URI needs no escaping. Do not commit `.env`.
+   Paste the two different generated values into `MONGO_ROOT_PASSWORD` and `MONGO_APP_PASSWORD` in `.env`. Use hex values so the MongoDB URI needs no escaping. Do not commit `.env`.
 
 2. Build and start:
 
@@ -55,7 +56,7 @@ Requires Docker Engine with Compose. First installation/build needs internet acc
 
 5. Wait for the dataset status to become `completed`, then inspect alerts, open the graph, mark an alert reviewed, and export a report.
 
-MongoDB is not published to the host network. The named volume `mongo_data` preserves data across ordinary restarts. Do not use `docker compose down -v` unless you deliberately intend to delete all project data.
+MongoDB is not published to the host network. The API uses a dedicated `sentinel_app` account limited to the application database; it does not use the MongoDB root account. The named volume `mongo_data` preserves data across ordinary restarts. Do not use `docker compose down -v` unless you deliberately intend to delete all project data.
 
 Container definitions are supplied but were not built in the development environment; native FastAPI/React and a real MongoDB instance were tested.
 
@@ -173,6 +174,8 @@ SENTINEL_TEST_MONGO_URI='mongodb://127.0.0.1:27017' PYTHONPATH=backend .venv/bin
 Each test creates a randomly named `sentinel_test_*` database and deletes only that database after the test. Never point tests at a shared production database without reviewing the test configuration.
 
 ## Private-network or future public deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the deployment preflight, secrets, startup, health-check, and operating procedure.
 
 The default bind address is localhost. For a trusted LAN demo, explicitly set `BIND_ADDRESS=0.0.0.0` and add the exact browser origin (for example `http://192.168.1.20:8080`) to `ALLOWED_ORIGINS`. Plain HTTP is appropriate only for trusted local demos with non-sensitive data.
 
