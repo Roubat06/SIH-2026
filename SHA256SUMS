@@ -26,13 +26,13 @@ ba8d27e22b853243b4e6dfadb958284f2fe1b6e0e78d6fdfd4a920e5d469e1ee  ./deploy/mongo
 84d9aa2c6b2c7fc7df12376d15de6274b54d715c62340d742d84223717232a4a  ./frontend/pnpm-lock.yaml
 d6d0c24446d91ef762d37c6ba801bb516e65d7055aa9f8027fcd457409a97ce1  ./frontend/pnpm-workspace.yaml
 6566b1e6cbd3daa13ba848d9a577bbdc0895569212b54a0ddf6d7e43bd5844fb  ./frontend/public/og.png
-e0c74038899d3561d36cc4dc557fd3fb6db8fa609a588737ac37e50fb857d31d  ./frontend/src/App.tsx
-0fbbb88a401ee40b21a01f2dd4fa043b0151646b40ee141bcbc33a3a933deeb9  ./frontend/src/Graph.tsx
+c5b972f86f6d2852fe7d3f7893d72e35ac87ac80522ce473cd50182bfb9573f0  ./frontend/src/App.tsx
+543b438a6542963a9638fe9c9e0b4185fd7d9aa728977677584fb41e7f17a102  ./frontend/src/Graph.tsx
 594d89d7ce65b4a9af75e7967d19028490c33eb858ebc2a2f13ef31464841178  ./frontend/src/Investigation.tsx
 a427ed4059a1f4449aac8f24d4afbf62e5449dd2bf61678d010f14722dc13cb9  ./frontend/src/data.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./frontend/src/demo-transactions.json
 0149f7a69d4d5aeb746722160f8fbcd57defdf78e80e1fe3d9038dc76f84361e  ./frontend/src/main.tsx
-046eacec29940dbca6e6dc27221d54b66e61bb2bc9654fbc52d96a5ea6baae54  ./frontend/src/style.css
+9a8dc9fd76605015ab8eb9d6f732af0779a27c89fb6037d128952e01cd3fda4b  ./frontend/src/style.css
 592d67539dcf5a1b7fa909b8739964cc07653bf0231a186049e381144417c3cd  ./frontend/tsconfig.json
 78e1fa93cb87fccbf6a28576075511b0e6c592493ad1463d1a05868879c7303b  ./frontend/vite.config.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./samples/synthetic-training.json

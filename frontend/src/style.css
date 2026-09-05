@@ -1419,6 +1419,295 @@ dd {
 .spin {
   animation: spin 1s linear infinite;
 }
+
+/* Restrained motion system: feedback, hierarchy, and data-state changes. */
+.page-motion {
+  animation: page-settle 0.38s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+.page-motion .eyebrow,
+.page-motion .page-heading h1,
+.page-motion .page-heading p {
+  animation: text-rise 0.42s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+.page-motion .page-heading h1 {
+  animation-delay: 0.045s;
+}
+.page-motion .page-heading p {
+  animation-delay: 0.09s;
+}
+.page-motion .stats-grid > .stat-card,
+.page-motion > .panel,
+.page-motion > .overview-grid,
+.page-motion > .overview-bottom,
+.page-motion > .case-bar,
+.page-motion > .demo-banner {
+  animation: surface-rise 0.42s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+  animation-delay: 0.1s;
+}
+.page-motion .stats-grid > .stat-card:nth-child(2) {
+  animation-delay: 0.14s;
+}
+.page-motion .stats-grid > .stat-card:nth-child(3) {
+  animation-delay: 0.18s;
+}
+.page-motion .stats-grid > .stat-card:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.page-motion .timeline-event {
+  animation: text-rise 0.34s ease-out both;
+}
+.page-motion .timeline-event:nth-child(2) {
+  animation-delay: 0.04s;
+}
+.page-motion .timeline-event:nth-child(3) {
+  animation-delay: 0.08s;
+}
+.page-motion .timeline-event:nth-child(4) {
+  animation-delay: 0.12s;
+}
+.page-motion .bar-slot > div {
+  transform-origin: bottom;
+  animation: chart-rise 0.55s cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+.page-motion .bar-slot:nth-child(2n) > div {
+  animation-delay: 0.035s;
+}
+.page-motion .bar-slot:nth-child(3n) > div {
+  animation-delay: 0.07s;
+}
+.route-progress {
+  position: fixed;
+  z-index: 30;
+  top: 64px;
+  left: 230px;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s;
+}
+.route-progress.visible {
+  opacity: 1;
+}
+.route-progress span {
+  display: block;
+  width: 32%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--mint), transparent);
+  animation: loading-line 1.05s ease-in-out infinite;
+}
+.button,
+.icon-button,
+.text-button,
+.graph-controls button {
+  transition:
+    color 0.18s,
+    background 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s,
+    transform 0.18s;
+}
+.button {
+  position: relative;
+  overflow: hidden;
+}
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 25%,
+    rgb(255 255 255 / 0.09) 46%,
+    transparent 67%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.42s ease;
+  pointer-events: none;
+}
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: #425262;
+  box-shadow: 0 7px 20px rgb(0 0 0 / 0.18);
+}
+.button:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+.button:active:not(:disabled),
+.icon-button:active,
+.graph-controls button:active {
+  transform: translateY(1px) scale(0.97);
+}
+.sidebar button {
+  transition:
+    background 0.18s,
+    color 0.18s,
+    transform 0.18s,
+    box-shadow 0.18s;
+}
+.sidebar button:hover {
+  transform: translateX(2px);
+}
+.sidebar button.active {
+  box-shadow: inset 2px 0 var(--mint);
+}
+.workspace-label,
+.eyebrow,
+.small-label,
+.chip,
+.badge,
+.stage-pill {
+  transition:
+    color 0.18s,
+    border-color 0.18s,
+    background 0.18s,
+    letter-spacing 0.18s,
+    transform 0.18s;
+}
+.workspace-label::after {
+  content: "";
+  display: inline-block;
+  width: 0;
+  height: 1px;
+  margin: 0 0 3px 7px;
+  background: #527d6d;
+  transition: width 0.25s ease;
+}
+.sidebar:hover .workspace-label::after {
+  width: 18px;
+}
+.chip:hover,
+.badge:hover,
+.stage-pill:hover {
+  transform: translateY(-1px);
+  border-color: #557082;
+}
+.stat-card,
+.panel,
+.signal-card,
+.dataset-row {
+  transition:
+    border-color 0.22s,
+    box-shadow 0.22s,
+    transform 0.22s;
+}
+.stat-card:hover,
+.signal-card:hover {
+  border-color: #344958;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.13);
+}
+.pipeline-strip > div {
+  transition:
+    border-color 0.25s,
+    color 0.25s,
+    transform 0.25s;
+}
+.pipeline-strip > div:hover {
+  transform: translateY(-2px);
+}
+.pipeline-strip .triggered i {
+  animation: stage-arrive 0.55s ease-out both;
+}
+.graph-canvas {
+  opacity: 0;
+  transform: scale(0.985);
+  transition:
+    opacity 0.32s ease,
+    transform 0.42s cubic-bezier(0.2, 0.7, 0.25, 1);
+}
+.graph-canvas.is-ready {
+  opacity: 1;
+  transform: scale(1);
+}
+.graph-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  background: rgb(17 23 31 / 0.78);
+  color: #8398a9;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s,
+    visibility 0.2s;
+  pointer-events: none;
+}
+.graph-loading.visible {
+  opacity: 1;
+  visibility: visible;
+}
+.graph-loading span,
+.results-loading::after {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #344957;
+  border-top-color: var(--mint);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.graph-loading small {
+  font-size: 9px;
+  letter-spacing: 0.8px;
+}
+.results-loading {
+  position: relative;
+  opacity: 0.56;
+  filter: saturate(0.65);
+  pointer-events: none;
+}
+.results-loading::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  top: 30px;
+  left: calc(50% - 11px);
+}
+@keyframes page-settle {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes text-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes surface-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes chart-rise {
+  from {
+    opacity: 0.25;
+    transform: scaleY(0.08);
+  }
+}
+@keyframes stage-arrive {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  60% {
+    transform: scale(1.35);
+  }
+}
+@keyframes loading-line {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(420%);
+  }
+}
 @keyframes spin {
   to {
     transform: rotate(360deg);

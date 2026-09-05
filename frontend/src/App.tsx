@@ -514,7 +514,15 @@ export default function App() {
             )}
           </div>
         </header>
-        <main>
+        <main key={page} className="page-motion">
+          <div
+            className={`route-progress ${loading || busy ? "visible" : ""}`}
+            role="progressbar"
+            aria-label="Loading workspace data"
+            aria-hidden={!(loading || busy)}
+          >
+            <span />
+          </div>
           <div className="page-heading">
             <div>
               <div className="eyebrow">

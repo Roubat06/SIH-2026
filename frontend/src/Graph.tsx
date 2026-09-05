@@ -17,9 +17,14 @@ export default function Graph({
     cy = useRef<cytoscape.Core | null>(null);
   const [error, setError] = useState("");
   const [truncated, setTruncated] = useState(false);
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
     setError("");
+    setLoading(true);
     Promise.resolve()
       .then(() =>
         demo ? demoGraph(txid) : api(`/cases/${caseId}/graph/${txid}`),
@@ -35,6 +40,9 @@ export default function Graph({
             directed: true,
             padding: 35,
             spacingFactor: 1.1,
+            animate: !reduceMotion,
+            animationDuration: reduceMotion ? 0 : 620,
+            animationEasing: "ease-out-cubic",
           },
           minZoom: 0.2,
           maxZoom: 3,
@@ -73,6 +81,19 @@ export default function Graph({
               },
             },
             {
+              selector: "node:selected",
+              style: {
+                "border-width": 4,
+                "border-color": "#ffe0a3",
+                "overlay-color": "#e8b36a",
+                "overlay-opacity": 0.08,
+                "overlay-padding": 7,
+                "transition-property":
+                  "border-width, border-color, overlay-opacity",
+                "transition-duration": 180,
+              },
+            },
+            {
               selector: "edge",
               style: {
                 width: 1.2,
@@ -87,8 +108,13 @@ export default function Graph({
         cy.current.on("tap", 'node[kind="transaction"]', (e) =>
           onSelect?.(e.target.id()),
         );
+        setLoading(false);
       })
-      .catch((e) => active && setError(e.message));
+      .catch((e) => {
+        if (!active) return;
+        setError(e.message);
+        setLoading(false);
+      });
     return () => {
       active = false;
       cy.current?.destroy();
@@ -99,9 +125,19 @@ export default function Graph({
     <div className="graph-wrap">
       <div
         ref={ref}
-        className="graph-canvas"
+        className={`graph-canvas ${loading ? "" : "is-ready"}`}
         aria-label={`Transaction graph for ${short(txid)}`}
+        aria-busy={loading}
       />
+      <div
+        className={`graph-loading ${loading ? "visible" : ""}`}
+        role="status"
+        aria-live="polite"
+        aria-hidden={!loading}
+      >
+        <span />
+        <small>Mapping transaction flow</small>
+      </div>
       {error && <div className="graph-error">{error}</div>}
       <div className="graph-key">
         <span>
@@ -120,19 +156,35 @@ export default function Graph({
       <div className="graph-controls">
         <button
           aria-label="Zoom in"
-          onClick={() => cy.current?.zoom(cy.current.zoom() * 1.2)}
+          onClick={() =>
+            cy.current?.animate({
+              zoom: cy.current.zoom() * 1.2,
+              duration: 180,
+            })
+          }
         >
           <Plus size={15} />
         </button>
         <button
           aria-label="Zoom out"
-          onClick={() => cy.current?.zoom(cy.current.zoom() / 1.2)}
+          onClick={() =>
+            cy.current?.animate({
+              zoom: cy.current.zoom() / 1.2,
+              duration: 180,
+            })
+          }
         >
           <Minus size={15} />
         </button>
         <button
           aria-label="Fit graph"
-          onClick={() => cy.current?.fit(undefined, 35)}
+          onClick={() => {
+            if (!cy.current) return;
+            cy.current.animate({
+              fit: { eles: cy.current.elements(), padding: 35 },
+              duration: 260,
+            });
+          }}
         >
           <Maximize size={15} />
         </button>
