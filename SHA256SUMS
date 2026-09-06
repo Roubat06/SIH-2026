@@ -44,5 +44,5 @@ de51e08d1666260e395412c449f965b29aeffc7e1f1877c76f41c94d902e49d5  ./samples/tran
 c93c7933dc6d72adda58fbb073e14fd91b38ee1c1bd261a29530e485450399e9  ./samples/transactions.xml
 ad2bad178381d388c229e04b266b4033f4c21f807beb01e5e55c35bfcb75cf67  ./scripts/preflight.sh
 9915e9ae517700473d96df2c6190a541824cdd1efe8fa4c3d876d71a4b59e3ac  ./scripts/start-local.sh
-48ba380ce99df400d9177129c45a58796a671c1d6e631ad2c2146ead50f81856  ./vercel.json
+d2cd2a6bddac23cada35f85a366520a94637fe2e1196c29c6465ee9ec82378cd  ./vercel.json
 0829980ce00286d941dbdf80d4f5f5dca7790104bba198a8fa7ba5ed9baecddf  ./web-host/hosting.json
