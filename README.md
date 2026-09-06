@@ -196,7 +196,7 @@ frontend/src/       React workspace, graph, demo adapter, CSS
 backend/app/        FastAPI routes, access checks, MongoDB, models, worker
 backend/tests/      Workflow and security regression tests
 samples/           Synthetic JSON, CSV, XML
-scripts/           Local launcher and hosting preparation helper
+scripts/           Local launcher
 web-host/          Tracked website hosting configuration
 compose.yaml       Private MongoDB + API + worker deployment
 ```

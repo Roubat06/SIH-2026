@@ -11,6 +11,3 @@
 *.pyc
 *.tsbuildinfo
 *.log
-
-# Local materialization of the tracked web-host configuration
-.openai/
