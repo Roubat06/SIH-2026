@@ -22,7 +22,7 @@
       "source": "/dashboard",
       "destination": {
         "service": "frontend",
-        "path": "/"
+        "path": "/dashboard.html"
       }
     },
     {

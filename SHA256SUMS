@@ -22,6 +22,7 @@ ff6eb29adce0b0895ec99ff4d7325c98f467990ff8790d785bedc28e8a73601d  ./backend/requ
 50102a4706ebcd9fa3b88ff5488c0cdc3ee3712b671c186e6e35d8c51baa6445  ./backend/tests/test_workflow.py
 3de31f66c606f6f0d75f39adaf418ad0c350c164580da1dd76825e9170eddf5e  ./compose.yaml
 ba8d27e22b853243b4e6dfadb958284f2fe1b6e0e78d6fdfd4a920e5d469e1ee  ./deploy/mongo-init.js
+23e84206bf654dda3a7d36ad0827aca579a93a487351a5303c737dd8b825fa43  ./frontend/dashboard.html
 23e84206bf654dda3a7d36ad0827aca579a93a487351a5303c737dd8b825fa43  ./frontend/index.html
 7cbf85277c01dcf34115026c952ad0e38f403473deb1d8e100908d9ae49b062d  ./frontend/package-lock.json
 47f6d9c2ffa7b2dfa7b5e95a460e197ed58a2c723f21d972d121740a1b442dcd  ./frontend/package.json
@@ -37,11 +38,11 @@ a427ed4059a1f4449aac8f24d4afbf62e5449dd2bf61678d010f14722dc13cb9  ./frontend/src
 4f2a9b11b4214163feef9c93820ef901e98a13db8acebc62e3027fd8d9c62535  ./frontend/src/main.tsx
 5d45a95cb75ff71a166086e5dcf04aa3b518ce040efde4bfde1ec106e61a9317  ./frontend/src/style.css
 592d67539dcf5a1b7fa909b8739964cc07653bf0231a186049e381144417c3cd  ./frontend/tsconfig.json
-78e1fa93cb87fccbf6a28576075511b0e6c592493ad1463d1a05868879c7303b  ./frontend/vite.config.ts
+a92385580eb7544a05676092b01697437102b13299c611d943b502b3fcce90c7  ./frontend/vite.config.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./samples/synthetic-training.json
 de51e08d1666260e395412c449f965b29aeffc7e1f1877c76f41c94d902e49d5  ./samples/transactions.csv
 c93c7933dc6d72adda58fbb073e14fd91b38ee1c1bd261a29530e485450399e9  ./samples/transactions.xml
 ad2bad178381d388c229e04b266b4033f4c21f807beb01e5e55c35bfcb75cf67  ./scripts/preflight.sh
 9915e9ae517700473d96df2c6190a541824cdd1efe8fa4c3d876d71a4b59e3ac  ./scripts/start-local.sh
-539df6b13df322004514cd0dda0dc5919a268af0c502ab16c368b265bf4c8d06  ./vercel.json
+48ba380ce99df400d9177129c45a58796a671c1d6e631ad2c2146ead50f81856  ./vercel.json
 0829980ce00286d941dbdf80d4f5f5dca7790104bba198a8fa7ba5ed9baecddf  ./web-host/hosting.json
