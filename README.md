@@ -1,6 +1,6 @@
-# Bitcoin Sentinel
+# Sentinel Tool
 
-A working SIH prototype for offline or private-network Bitcoin investigation, built with **React + FastAPI + MongoDB**. Includes case permissions, dataset ingestion, exploratory anomaly detection, interactive transaction graphs, and JSON evidence reports.
+An AI-powered Sentinel Tool platform for offline or private-network Bitcoin investigation, built with **React + FastAPI + MongoDB**. Includes case permissions, dataset ingestion, exploratory anomaly detection, interactive transaction graphs, and JSON evidence reports.
 
 ## Investigation enhancements
 
@@ -128,7 +128,7 @@ JSON accepts a list of transactions or an object with `transactions` and optiona
 {
   "transactions": [{
     "txid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "observed_at": "2026-08-31T12:00:00Z",
+    "observed_at": "2025-08-31T12:00:00Z",
     "block_time": null,
     "inputs": [{
       "prev_txid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",

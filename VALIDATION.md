@@ -1,6 +1,6 @@
-# Validation — investigation enhancements, 2026-09-01
+# Sentinel Tool validation
 
-## Vercel readiness update, 2026-09-07
+## Vercel readiness update
 
 - Vercel Services configuration matches the current service schema: Vite and FastAPI build from separate roots, API rewrites precede the frontend catch-all, and the backend entry point is app.main:app.
 - Backend regression suite: all 18 tests passed under Python 3.12 with the locked dependencies and isolated MongoDB mock. The added coverage verifies request-scoped Vercel analysis, automatic exact-origin trust, secure cookies, the 4 MB Vercel upload limit, and one-time administrator creation.
@@ -11,8 +11,8 @@
 ## Deployment readiness update
 
 - Saved-project integrity: matched the validated source copy before deployment changes; required lockfiles, samples, and configuration files are present and non-empty.
-- React production build: passed again from the saved SIH directory (1,584 modules transformed).
-- Backend regression suite: all 15 tests passed from the saved SIH directory using the isolated test database.
+- React production build: passed again from the saved Sentinel Tool workspace (1,584 modules transformed).
+- Backend regression suite: all 15 tests passed from the saved Sentinel Tool workspace using the isolated test database.
 - Production browser smoke test: passed from the compiled `frontend/dist` build at `127.0.0.1:5173`; overview metrics, transaction table, advanced filters, and investigation timeline rendered and navigated without recent console errors.
 - Python import compilation, shell syntax, MongoDB initialization-script syntax, and Git whitespace checks: passed.
 - Application container build: passed with Podman from the saved directory, including frozen frontend installation, TypeScript/Vite production build, pinned Python dependencies, and the non-root runtime stage.

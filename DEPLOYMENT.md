@@ -6,7 +6,7 @@ This repository is ready to deploy as one Vercel project. The root vercel.json d
 
 ### 1. Create the database
 
-Create a MongoDB Atlas project and cluster. The Atlas free cluster is enough for an SIH demonstration, subject to its storage and usage limits.
+Create a MongoDB Atlas project and cluster. The Atlas free cluster is enough for a Sentinel Tool demonstration, subject to its storage and usage limits.
 
 Create a database user with a long, unique password and readWrite access only to the bitcoin_sentinel database. Vercel Functions use changing outbound addresses, so an Atlas free-tier deployment normally needs network access from 0.0.0.0/0. Keep the database credentials strong and narrowly scoped because that network rule permits connection attempts from anywhere.
 
@@ -14,7 +14,7 @@ Copy the Atlas application connection string. It should begin with mongodb+srv:/
 
 ### 2. Import the GitHub repository into Vercel
 
-1. In Vercel, choose **Add New -> Project** and import m4in4k/SIH-2026.
+1. In Vercel, choose **Add New -> Project** and import m4in4k/sentineltool.
 2. Leave **Root Directory** at the repository root.
 3. Select the **Services** framework preset. Vercel reads the frontend and backend definitions from vercel.json.
 4. Do not replace the build or output settings for either service. The backend installs the checked-in locked Python dependency set, and the frontend uses its frozen pnpm lockfile.
@@ -50,7 +50,7 @@ The bootstrap routine only creates an account while the users collection is empt
 
 Vercel Functions reject request and response bodies above 4.5 MB. This project therefore caps Vercel file uploads at 4 MB, including CSV, JSON, and XML. Self-hosted deployments retain the 10 MB application limit.
 
-Analysis runs inside the upload request because a Vercel Function cannot provide the always-running polling worker used by Docker Compose. This is suitable for the bounded 10,000-record SIH prototype. If processing later exceeds the function duration, move upload content to object storage and analysis to a durable queue/worker service.
+Analysis runs inside the upload request because a Vercel Function cannot provide the always-running polling worker used by Docker Compose. This is suitable for the bounded 10,000-record Sentinel Tool installation. If processing later exceeds the function duration, move upload content to object storage and analysis to a durable queue/worker service.
 
 Free Vercel and MongoDB Atlas plans can remain reachable without a computer running at home, but they have quotas, cold starts, and no paid uptime guarantee. Monitor the Vercel Functions logs and Atlas metrics, and keep a database backup before demonstrations.
 

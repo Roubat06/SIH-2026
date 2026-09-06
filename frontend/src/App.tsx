@@ -429,15 +429,15 @@ export default function App() {
             <Shield size={22} />
           </span>
           <span>
-            SENTINEL
-            <small>BITCOIN INTELLIGENCE</small>
+            SENTINEL TOOL
+            <small>AI-POWERED BITCOIN INTELLIGENCE</small>
           </span>
         </a>
         <div className="workspace-label">WORKSPACE</div>
         <div className="workspace-switch">
-          <span className="workspace-icon">IF</span>
+          <span className="workspace-icon">ST</span>
           <span>
-            IF-LOOP<small>Investigation workspace</small>
+            SENTINEL TOOL<small>Investigation workspace</small>
           </span>
           <ShieldCheck size={15} />
         </div>
@@ -534,7 +534,7 @@ export default function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                SENTINEL /{" "}
+                SENTINEL TOOL /{" "}
                 {page === "Overview" ? "COMMAND CENTER" : "INVESTIGATION"}
               </div>
               <h1>{page === "Overview" ? "Follow the signals." : page}</h1>
@@ -636,7 +636,7 @@ export default function App() {
               </button>
               <span className="small-label">
                 {demo
-                  ? "Snapshot · Aug 31, 2026"
+                  ? "Reference snapshot"
                   : loading
                     ? "Loading…"
                     : "Case overview"}
@@ -1210,7 +1210,7 @@ export default function App() {
               required.
             </span>
             <span>
-              IF-LOOP <i /> SMART INDIA HACKATHON 2026
+              SENTINEL TOOL <i /> AI-POWERED BITCOIN INTELLIGENCE
             </span>
           </footer>
         </main>
@@ -1247,7 +1247,7 @@ export default function App() {
               <Shield size={28} />
             </span>
             <div className="eyebrow">YOUR INVESTIGATION WORKSPACE</div>
-            <h2 id="login-title">Welcome to Sentinel.</h2>
+            <h2 id="login-title">Welcome to Sentinel Tool.</h2>
             <p>Sign in with your administrator-provided account.</p>
             <form onSubmit={submitLogin}>
               <label>

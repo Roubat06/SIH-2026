@@ -22,8 +22,8 @@ function Nav() {
       <div className="landing-brand">
         <div className="brand-symbol">B</div>
         <div>
-          <div className="brand-name">SENTINEL</div>
-          <small>BITCOIN INTELLIGENCE</small>
+          <div className="brand-name">SENTINEL TOOL</div>
+          <small>AI-POWERED BITCOIN INTELLIGENCE</small>
         </div>
       </div>
       <nav className="landing-nav-links">
@@ -55,7 +55,7 @@ function Nav() {
           Capabilities
         </a>
         <button className="button primary" onClick={goDashboard}>
-          Launch Sentinel <ArrowRight size={14} />
+          Launch Sentinel Tool <ArrowRight size={14} />
         </button>
       </nav>
     </header>
@@ -70,20 +70,20 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-inner">
-        <div className="eyebrow">SENTINEL / BITCOIN INTELLIGENCE</div>
+        <div className="eyebrow">SENTINEL TOOL / AI-POWERED BITCOIN INTELLIGENCE</div>
         <h1>
           See the signals.
           <br />
           Understand the chain.
         </h1>
         <p>
-          Continuous monitoring and analysis of Bitcoin transaction traffic.
+          AI-powered monitoring and analysis of Bitcoin transaction traffic.
           Detect unusual activity, investigate suspicious patterns, and turn
           blockchain data into actionable evidence.
         </p>
         <div className="hero-actions">
           <button className="button primary" onClick={goDashboard}>
-            Launch Sentinel →
+            Launch Sentinel Tool →
           </button>
           <button
             className="button"
@@ -161,7 +161,7 @@ function Capabilities() {
     {
       name: "AI Anomaly Detection",
       description:
-        "Use behavioral analysis to identify transaction patterns that deviate from expected activity and may indicate suspicious behavior.",
+        "Use AI-powered behavioral analysis to identify transaction patterns that deviate from expected activity and may indicate suspicious behavior.",
     },
     {
       name: "Risk & Priority Signals",
@@ -230,7 +230,7 @@ function ProductPreview() {
     <section id="product" className="preview">
       <div className="preview-text">
         <h2>One command center for the entire investigation.</h2>
-        <p className="muted">Open the full Sentinel command center to investigate.</p>
+        <p className="muted">Open the full Sentinel Tool command center to investigate.</p>
         <button className="button" onClick={open}>
           Open Command Center →
         </button>
@@ -257,7 +257,7 @@ function FinalCTA() {
       <h2>Follow the signals.</h2>
       <p>Turn transaction activity into evidence you can investigate.</p>
       <button className="button primary" onClick={go}>
-        Launch Sentinel →
+        Launch Sentinel Tool →
       </button>
     </section>
   );
@@ -267,11 +267,11 @@ function Footer() {
   return (
     <footer className="landing-footer">
       <div>
-        <div className="brand-name">SENTINEL</div>
-        <small>BITCOIN INTELLIGENCE</small>
+        <div className="brand-name">SENTINEL TOOL</div>
+        <small>AI-POWERED BITCOIN INTELLIGENCE</small>
       </div>
       <div className="muted">
-        IF-LOOP — Monitoring & Analysis of Bitcoin Transaction Traffic
+        SENTINEL TOOL — BITCOIN TRANSACTION INTELLIGENCE
       </div>
     </footer>
   );
