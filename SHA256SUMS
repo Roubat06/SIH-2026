@@ -21,7 +21,7 @@ ff6eb29adce0b0895ec99ff4d7325c98f467990ff8790d785bedc28e8a73601d  ./backend/requ
 6b69bbf4e12ad786d30cbe08c6af21b75dd404372ae96ac8dbad4fa403e8b0c0  ./backend/tests/test_workflow.py
 3de31f66c606f6f0d75f39adaf418ad0c350c164580da1dd76825e9170eddf5e  ./compose.yaml
 ba8d27e22b853243b4e6dfadb958284f2fe1b6e0e78d6fdfd4a920e5d469e1ee  ./deploy/mongo-init.js
-5294af8cfb3142b185d4134e3bb3669c963c693a3cd96de181e6e7fd807c5481  ./frontend/index.html
+360a73c6c20053f0de24aa6c91a11a68a7162346f79d4bb8b59e157bb5012df0  ./frontend/index.html
 47f6d9c2ffa7b2dfa7b5e95a460e197ed58a2c723f21d972d121740a1b442dcd  ./frontend/package.json
 84d9aa2c6b2c7fc7df12376d15de6274b54d715c62340d742d84223717232a4a  ./frontend/pnpm-lock.yaml
 d6d0c24446d91ef762d37c6ba801bb516e65d7055aa9f8027fcd457409a97ce1  ./frontend/pnpm-workspace.yaml
@@ -32,7 +32,7 @@ c5b972f86f6d2852fe7d3f7893d72e35ac87ac80522ce473cd50182bfb9573f0  ./frontend/src
 a427ed4059a1f4449aac8f24d4afbf62e5449dd2bf61678d010f14722dc13cb9  ./frontend/src/data.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./frontend/src/demo-transactions.json
 0149f7a69d4d5aeb746722160f8fbcd57defdf78e80e1fe3d9038dc76f84361e  ./frontend/src/main.tsx
-a57024d55b7d5a2d59c356033fdbf602a411c7dbe85b177bba1220d262fd0fe8  ./frontend/src/style.css
+3ea179d34f3b587616b63bebc323d1d359a8ec5b6503470381d305f8c0409f92  ./frontend/src/style.css
 592d67539dcf5a1b7fa909b8739964cc07653bf0231a186049e381144417c3cd  ./frontend/tsconfig.json
 78e1fa93cb87fccbf6a28576075511b0e6c592493ad1463d1a05868879c7303b  ./frontend/vite.config.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./samples/synthetic-training.json
