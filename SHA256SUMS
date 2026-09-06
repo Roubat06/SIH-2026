@@ -36,7 +36,7 @@ aaf61a2e519142e386e243fcfa2c3a1fc63ccae4a506ad775100f39acb7c03a5  ./frontend/src
 a427ed4059a1f4449aac8f24d4afbf62e5449dd2bf61678d010f14722dc13cb9  ./frontend/src/data.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./frontend/src/demo-transactions.json
 4f2a9b11b4214163feef9c93820ef901e98a13db8acebc62e3027fd8d9c62535  ./frontend/src/main.tsx
-a805ad1f0b35f841e50c7cc111f4c4192607507aa020d6d9bbc4af090c7bdc85  ./frontend/src/style.css
+39049544b0d8c3de22ed13c2cacae649c20e95f28b6a392d645fdf0b9ed53037  ./frontend/src/style.css
 592d67539dcf5a1b7fa909b8739964cc07653bf0231a186049e381144417c3cd  ./frontend/tsconfig.json
 a92385580eb7544a05676092b01697437102b13299c611d943b502b3fcce90c7  ./frontend/vite.config.ts
 56bb94ce2a3dec12a89f447ce18a95632c3f1fda8ae110bdd8279bbe05ab9077  ./samples/synthetic-training.json
