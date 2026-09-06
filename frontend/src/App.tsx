@@ -273,12 +273,16 @@ export default function App() {
     const data = new FormData();
     data.append("file", file);
     try {
-      await api(`/cases/${current.id}/datasets`, {
+      const result = await api(`/cases/${current.id}/datasets`, {
         method: "POST",
         body: data,
       });
       setNotice(
-        "Dataset queued. Validation and analysis will run in the background.",
+        result.status === "completed"
+          ? "Dataset validated and analyzed."
+          : result.status === "failed"
+            ? "Dataset validation failed. Review its recorded error."
+            : "Dataset queued. Validation and analysis will run in the background.",
       );
       await refresh();
     } catch (e) {
@@ -290,8 +294,12 @@ export default function App() {
   async function seedDemo() {
     setBusy(true);
     try {
-      await api(`/cases/${current.id}/demo`, { method: "POST" });
-      setNotice("Synthetic training dataset queued.");
+      const result = await api(`/cases/${current.id}/demo`, { method: "POST" });
+      setNotice(
+        result.status === "completed"
+          ? "Synthetic training dataset analyzed."
+          : "Synthetic training dataset queued.",
+      );
       await refresh();
     } catch (e) {
       setError((e as Error).message);
@@ -932,7 +940,8 @@ export default function App() {
                   <p>
                     Import CSV, JSON, or XML transaction records.
                     <br />
-                    Files are validated before analysis. Maximum 10 MB.
+                    Files are validated before analysis. Maximum 4 MB on Vercel
+                    or 10 MB when self-hosted.
                   </p>
                   <label
                     className={`button primary ${!canWrite ? "disabled" : ""}`}
@@ -1273,8 +1282,8 @@ export default function App() {
               </button>
             </form>
             <div className="modal-note">
-              First setup? Create an administrator using the backend setup
-              command in the README.
+              First setup? Follow the administrator setup in the deployment
+              guide.
             </div>
             <button className="text-button" onClick={showDemo}>
               Explore synthetic demo instead <ArrowRight size={14} />

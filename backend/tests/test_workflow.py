@@ -6,7 +6,7 @@ import mongomock
 import pytest
 from fastapi.testclient import TestClient
 from app import db
-from app.main import app
+from app.main import app, allowed_origins, ensure_bootstrap_admin, max_upload
 from app.security import passwords,digest
 from app.worker import tick
 from app.analysis import parse,analyze,training_data
@@ -252,3 +252,43 @@ def test_dual_rule_and_model_detection_preserves_first_stage():
     assert a['detection_stages']==['rule_detection','model_scoring']
     assert a['detections'][0]['detected_at']<=a['detections'][1]['detected_at']<=a['created_at']
     assert [x[0] for x in history if x[1]=='completed']==['feature_engineering','rule_detection','model_scoring','alert_generation']
+
+
+def test_vercel_mode_processes_without_persistent_worker(client,monkeypatch):
+    account(client);cid=case(client)
+    monkeypatch.setenv('SENTINEL_SERVERLESS','true')
+    response=client.post(f'/api/cases/{cid}/demo')
+    assert response.status_code==202,response.text
+    assert response.json()['status']=='completed'
+    assert response.json()['count']==180
+    assert not tick()
+    assert max_upload()==4*1024*1024
+
+
+def test_vercel_runtime_origin_and_secure_cookie(client,monkeypatch):
+    account(client,login=False)
+    monkeypatch.setenv('VERCEL','1')
+    monkeypatch.setenv('VERCEL_URL','sentinel-preview.vercel.app')
+    assert 'https://sentinel-preview.vercel.app' in allowed_origins()
+    response=client.post(
+        '/api/auth/login',
+        json={'email':'admin@example.org','password':'Strong-test-password-123'},
+        headers={'Origin':'https://sentinel-preview.vercel.app'},
+    )
+    assert response.status_code==200,response.text
+    assert 'Secure' in response.headers['set-cookie']
+
+
+def test_environment_bootstrap_creates_only_first_admin(client,monkeypatch):
+    database=db.database()
+    database.users.delete_many({})
+    monkeypatch.setenv('BOOTSTRAP_ADMIN_EMAIL','owner@example.org')
+    monkeypatch.setenv('BOOTSTRAP_ADMIN_NAME','Project owner')
+    monkeypatch.setenv('BOOTSTRAP_ADMIN_PASSWORD','Long-bootstrap-password-123')
+    assert ensure_bootstrap_admin(database)
+    assert database.users.count_documents({'role':'admin'})==1
+    assert passwords.verify(
+        'Long-bootstrap-password-123',
+        database.users.find_one({'email':'owner@example.org'})['password_hash'],
+    )
+    assert not ensure_bootstrap_admin(database)

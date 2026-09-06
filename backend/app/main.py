@@ -16,8 +16,49 @@ from .security import passwords, DUMMY_HASH, current_user, digest, access, audit
 from .models import Credentials, UserCreate, CaseCreate, MemberAdd, Review
 from .analysis import training_data
 
-MAX_UPLOAD=10*1024*1024
+LOCAL_MAX_UPLOAD=10*1024*1024
+VERCEL_MAX_UPLOAD=4*1024*1024
 DISCLAIMER='Unusual behavior is a lead for human review, not proof of wrongdoing. Scores are relative to the imported dataset, not calibrated probabilities. Observed network peers do not establish transaction origin or wallet ownership.'
+
+def serverless_mode():
+    return os.getenv('VERCEL')=='1' or os.getenv('SENTINEL_SERVERLESS','false').lower()=='true'
+
+def max_upload():
+    # Vercel Functions reject request bodies above 4.5 MB; leave room for multipart framing.
+    return VERCEL_MAX_UPLOAD if serverless_mode() else LOCAL_MAX_UPLOAD
+
+def allowed_origins():
+    configured=os.getenv('ALLOWED_ORIGINS','http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://127.0.0.1:8080')
+    allowed={origin.strip().rstrip('/') for origin in configured.split(',') if origin.strip()}
+    # Vercel supplies these hostnames at runtime. Trust only the exact current and production hosts.
+    for key in ('VERCEL_URL','VERCEL_PROJECT_PRODUCTION_URL'):
+        host=os.getenv(key,'').strip().rstrip('/')
+        if host:
+            allowed.add(host if host.startswith(('http://','https://')) else f'https://{host}')
+    return allowed
+
+def ensure_bootstrap_admin(db):
+    values={
+        'email':os.getenv('BOOTSTRAP_ADMIN_EMAIL','').strip().lower(),
+        'name':os.getenv('BOOTSTRAP_ADMIN_NAME','').strip(),
+        'password':os.getenv('BOOTSTRAP_ADMIN_PASSWORD',''),
+    }
+    if not any(values.values()):
+        return False
+    if not all(values.values()):
+        raise RuntimeError('Set all BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_NAME, and BOOTSTRAP_ADMIN_PASSWORD values.')
+    if len(values['password'])<12 or '@' not in values['email']:
+        raise RuntimeError('Bootstrap administrator credentials are invalid.')
+    if db.users.count_documents({})>0:
+        return False
+    uid=secrets.token_hex(12)
+    record={'_id':uid,'email':values['email'],'name':values['name'],'role':'admin','password_hash':passwords.hash(values['password']),'created_at':now()}
+    try:
+        db.users.insert_one(record)
+    except DuplicateKeyError:
+        return False
+    db.audit.insert_one({'_id':secrets.token_hex(12),'user_id':uid,'case_id':None,'action':'bootstrap_admin_created','detail':{},'created_at':now()})
+    return True
 
 def case_public(c,user):
     role='admin' if user['role']=='admin' else next((m['role'] for m in c['members'] if m['user_id']==user['_id']),None)
@@ -29,7 +70,9 @@ def completed_scope(case_id):
 
 @asynccontextmanager
 async def lifespan(app):
-    indexes(database())
+    db=database()
+    indexes(db)
+    ensure_bootstrap_admin(db)
     yield
 
 app=FastAPI(title='Bitcoin Sentinel AI',version='0.1.0',lifespan=lifespan,docs_url='/api/docs',openapi_url='/api/openapi.json')
@@ -40,15 +83,14 @@ async def safety_headers(request:Request,call_next):
         if request.headers.get('X-Sentinel-Request')!='1':
             return JSONResponse({'detail':'Missing request verification header.'},403)
         origin=request.headers.get('origin')
-        allowed=os.getenv('ALLOWED_ORIGINS','http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://127.0.0.1:8080').split(',')
-        if origin and origin not in allowed:
+        if origin and origin.rstrip('/') not in allowed_origins():
             return JSONResponse({'detail':'Origin not permitted.'},403)
         length=request.headers.get('content-length')
         if length is None:
             return JSONResponse({'detail':'Content-Length is required for uploads and mutations.'},411)
         try:
-            if int(length)>MAX_UPLOAD+256*1024:
-                return JSONResponse({'detail':'Request exceeds the 10 MB upload limit.'},413)
+            if int(length)>max_upload()+256*1024:
+                return JSONResponse({'detail':f'Request exceeds the {max_upload()//(1024*1024)} MB upload limit.'},413)
         except ValueError:
             return JSONResponse({'detail':'Invalid Content-Length.'},400)
     response=await call_next(request)
@@ -78,7 +120,8 @@ def login(body:Credentials,request:Request,response:Response):
     db.login_attempts.delete_one({'_id':key})
     token=secrets.token_urlsafe(32)
     db.sessions.insert_one({'_id':digest(token),'user_id':user['_id'],'expires_at':now()+timedelta(hours=8)})
-    response.set_cookie('sentinel_session',token,httponly=True,secure=os.getenv('COOKIE_SECURE','false').lower()=='true',samesite='strict',max_age=8*3600,path='/api')
+    secure=os.getenv('COOKIE_SECURE','true' if serverless_mode() else 'false').lower()=='true'
+    response.set_cookie('sentinel_session',token,httponly=True,secure=secure,samesite='strict',max_age=8*3600,path='/api')
     audit(user['_id'],None,'sign_in',{})
     return public(user)
 
@@ -163,6 +206,10 @@ def enqueue(case_id,user,filename,content,synthetic=False):
         db.uploads.delete_one({'_id':did})
         raise
     audit(user['_id'],case_id,'dataset_queued',{'dataset_id':did,'sha256':sha})
+    if serverless_mode():
+        from .worker import claim_and_process
+        claim_and_process(did)
+        return public(db.datasets.find_one({'_id':did}))
     return public(d)
 
 @app.post('/api/cases/{case_id}/datasets',status_code=202)
@@ -171,10 +218,11 @@ async def upload(case_id:str,file:UploadFile=File(...),user=Depends(current_user
     filename=file.filename or ''
     if not filename.lower().endswith(('.json','.csv','.xml')):
         raise HTTPException(400,'Choose a CSV, JSON, or XML file.')
-    content=await file.read(MAX_UPLOAD+1)
+    limit=max_upload()
+    content=await file.read(limit+1)
     await file.close()
-    if not content or len(content)>MAX_UPLOAD:
-        raise HTTPException(413,'Upload a non-empty file no larger than 10 MB.')
+    if not content or len(content)>limit:
+        raise HTTPException(413,f'Upload a non-empty file no larger than {limit//(1024*1024)} MB.')
     # Disk/network DB calls belong on the thread pool, not the async event loop.
     from starlette.concurrency import run_in_threadpool
     return await run_in_threadpool(enqueue,case_id,user,filename,content)

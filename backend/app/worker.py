@@ -11,7 +11,10 @@ from .analysis import parse, analyze, MODEL_VERSION
 logger=logging.getLogger(__name__)
 
 def process(dataset_id):
-    db=database(); d=db.datasets.find_one({'_id':dataset_id}); scope={'case_id':d['case_id'],'dataset_id':dataset_id}
+    db=database(); d=db.datasets.find_one({'_id':dataset_id})
+    if not d:
+        return False
+    scope={'case_id':d['case_id'],'dataset_id':dataset_id}
     def record_stage(stage,status,detail,stamp):
         db.datasets.update_one({'_id':dataset_id},{'$push':{'stage_events':{'id':secrets.token_hex(12),'stage':stage,'status':status,'at':stamp,'detail':detail}},'$set':{'current_stage':stage,'heartbeat':stamp}})
     try:
@@ -63,6 +66,16 @@ def process(dataset_id):
             db[collection].delete_many(scope)
         safe=str(exc)[:300] if isinstance(exc,(ValueError,UnicodeError,KeyError)) else 'Analysis failed. Check worker logs and dataset format.'
         db.datasets.update_one({'_id':dataset_id},{'$set':{'status':'failed','error':safe,'progress':0}})
+    return True
+
+def claim_and_process(dataset_id):
+    # Claim one known dataset and process it in the current request or worker.
+    job=database().datasets.find_one_and_update(
+        {'_id':dataset_id,'status':'queued'},
+        {'$set':{'status':'running','progress':5,'heartbeat':now()}},
+        return_document=ReturnDocument.AFTER,
+    )
+    return process(dataset_id) if job else False
 
 def tick():
     db=database()

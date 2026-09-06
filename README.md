@@ -21,10 +21,16 @@ Reports use schema version 1.1 and include the stored detection evidence and dat
 - Administrator-provisioned accounts; Argon2 password hashes; opaque expiring, server-revocable HttpOnly session cookies. No hardcoded passwords or public bootstrap endpoint.
 - Case owners, analysts, and viewers. Backend authorization on every case operation. Workspace administrators can access all cases and create accounts. Ordinary analysts see only cases they own or are assigned to. Viewers cannot import, create cases, or review alerts.
 - CSV, JSON, XML uploads, SHA-256 source hashes, record lineage, input/output schema validation, and duplicate detection. Optional network observations in JSON.
-- Mongo-backed queued analysis with a separate worker, visible job status, rule-based fan-out/fan-in signals, and deterministic Isolation Forest scoring for datasets of at least 40 records.
+- Mongo-backed queued analysis with a separate worker for Docker/local use, request-scoped analysis for Vercel, visible processing stages, rule-based fan-out/fan-in signals, and deterministic Isolation Forest scoring for datasets of at least 40 records.
 - Evidence export containing dataset metadata, alerts, source transactions, feature vectors, model parameters, and audit history.
 
 This is a prototype, not a validated forensic product. No blockchain consensus verification, wallet ownership inference, or calibrated crime prediction is performed.
+
+## Deploy the complete project on Vercel
+
+The repository includes a root vercel.json that deploys the Vite frontend and FastAPI backend as one Vercel Services project. Use MongoDB Atlas for the database. Imports are processed within the API request on Vercel because serverless deployments do not keep the local polling worker alive.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md#vercel--mongodb-atlas) for the exact dashboard settings, environment variables, first administrator setup, validation steps, and free-tier limits.
 
 ## Quick start: Docker Compose
 
@@ -142,7 +148,7 @@ JSON accepts a list of transactions or an object with `transactions` and optiona
 - A timestamp must carry a timezone; store observation and block times separately. Charts explicitly combine available observation/block timestamps and omit records lacking both. They are not precise creation-time charts.
 - CSV uses the same top-level fields with JSON-encoded `inputs` and `outputs` cells. XML examples use output and input attributes; XML entity expansion is disabled.
 - An optional network observation has `txid`, `observed_at`, `peer_ip`, `peer_port`, and `sensor`. These are preserved in reports and graph API responses, not treated as evidence of origin or ownership. The current visual graph shows only blockchain output relationships.
-- Limits: 10 MB/file, 10,000 transaction records/file, 500 inputs or outputs/record, 100,000 records/case for summary scans. These are explicit prototype bounds, not Bitcoin protocol limits.
+- Limits: 4 MB/file on Vercel (to stay below its 4.5 MB function body limit), 10 MB/file when self-hosted, 10,000 transaction records/file, 500 inputs or outputs/record, and 100,000 records/case for summary scans. These are explicit prototype bounds, not Bitcoin protocol limits.
 
 ## Analysis behavior and limits
 
@@ -154,7 +160,7 @@ Explanations list actual feature values and triggered rules; they do not claim e
 
 Reports include up to 1,000 alerts and 200 recent audit entries, with explicit limits. Graphs show at most 25 transactions within two hops and selected outputs, retaining connecting outputs where possible. Truncation is labeled. Whole-blockchain traversal, GeoIP enrichment, identity clustering, and live collection are not implemented.
 
-Use one worker for this prototype. Queued jobs survive restarts. Running jobs older than an hour without progress become visible failures; failed payloads are retained for administrator inspection. Automatic retry/reprocessing is not implemented. A fresh case can be used to retry a corrected or unchanged source file. Source import is schema validation, not a guarantee of chain validity, input-value conservation, authenticity, or absence of double spending.
+Use one worker for the Docker/local prototype. Queued jobs survive restarts. Vercel processes imports within the request and does not start this worker. Running jobs older than an hour without progress become visible failures; failed payloads are retained for administrator inspection. Automatic retry/reprocessing is not implemented. A fresh case can be used to retry a corrected or unchanged source file. Source import is schema validation, not a guarantee of chain validity, input-value conservation, authenticity, or absence of double spending.
 
 ## Tests
 
@@ -163,7 +169,7 @@ Use one worker for this prototype. Queued jobs survive restarts. Running jobs ol
 PYTHONPATH=backend .venv/bin/pytest backend/tests -q
 ```
 
-Tests cover import → queue → analysis → graph → review → report, cross-case isolation, viewer restrictions, expired sessions, CSRF origin/header checks, login throttling, duplicate lineage, malformed records, XML entity rejection, and uniform-data scoring.
+Tests cover the complete import, queue, analysis, graph, review, and report flow; Vercel request-scoped processing; deployment-origin and secure-cookie behavior; one-time administrator setup; cross-case isolation; viewer restrictions; expired sessions; CSRF checks; login throttling; duplicate lineage; malformed records; XML entity rejection; and uniform-data scoring.
 
 To run the same tests against real MongoDB:
 
@@ -197,6 +203,7 @@ backend/app/        FastAPI routes, access checks, MongoDB, models, worker
 backend/tests/      Workflow and security regression tests
 samples/           Synthetic JSON, CSV, XML
 scripts/           Local launcher
-web-host/          Tracked website hosting configuration
+web-host/          Tracked preview-host configuration
+vercel.json        Vercel Services routing for React + FastAPI
 compose.yaml       Private MongoDB + API + worker deployment
 ```

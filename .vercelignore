@@ -1,0 +1,11 @@
+.git/
+.openai/
+web-host/
+tmp/
+dist/
+frontend/dist/
+frontend/node_modules/
+backend/tests/
+.pytest_cache/
+.env
+.env.*
