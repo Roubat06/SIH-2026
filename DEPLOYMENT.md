@@ -14,7 +14,7 @@ Copy the Atlas application connection string. It should begin with mongodb+srv:/
 
 ### 2. Import the GitHub repository into Vercel
 
-1. In Vercel, choose **Add New -> Project** and import m4in4k/sentineltool.
+1. In Vercel, choose **Add New -> Project** and import this repository.
 2. Leave **Root Directory** at the repository root.
 3. Select the **Services** framework preset. Vercel reads the frontend and backend definitions from vercel.json.
 4. Do not replace the build or output settings for either service. The backend installs the checked-in locked Python dependency set, and the frontend uses its frozen pnpm lockfile.
