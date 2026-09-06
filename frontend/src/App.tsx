@@ -429,7 +429,7 @@ export default function App() {
             <Shield size={22} />
           </span>
           <span>
-            SENTINEL<span className="brand-ai">AI</span>
+            SENTINEL
             <small>BITCOIN INTELLIGENCE</small>
           </span>
         </a>
@@ -534,7 +534,7 @@ export default function App() {
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                BITCOIN SENTINEL /{" "}
+                SENTINEL /{" "}
                 {page === "Overview" ? "COMMAND CENTER" : "INVESTIGATION"}
               </div>
               <h1>{page === "Overview" ? "Follow the signals." : page}</h1>

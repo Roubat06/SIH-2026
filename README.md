@@ -1,4 +1,4 @@
-# Bitcoin Sentinel AI
+# Bitcoin Sentinel
 
 A working SIH prototype for offline or private-network Bitcoin investigation, built with **React + FastAPI + MongoDB**. Includes case permissions, dataset ingestion, exploratory anomaly detection, interactive transaction graphs, and JSON evidence reports.
 

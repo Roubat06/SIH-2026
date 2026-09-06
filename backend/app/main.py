@@ -75,7 +75,7 @@ async def lifespan(app):
     ensure_bootstrap_admin(db)
     yield
 
-app=FastAPI(title='Bitcoin Sentinel AI',version='0.1.0',lifespan=lifespan,docs_url='/api/docs',openapi_url='/api/openapi.json')
+app=FastAPI(title='Bitcoin Sentinel',version='0.1.0',lifespan=lifespan,docs_url='/api/docs',openapi_url='/api/openapi.json')
 
 @app.middleware('http')
 async def safety_headers(request:Request,call_next):

@@ -22,7 +22,7 @@ function Nav() {
       <div className="landing-brand">
         <div className="brand-symbol">B</div>
         <div>
-          <div className="brand-name">SENTINEL AI</div>
+          <div className="brand-name">SENTINEL</div>
           <small>BITCOIN INTELLIGENCE</small>
         </div>
       </div>
@@ -70,7 +70,7 @@ function Hero() {
   return (
     <section className="hero">
       <div className="hero-inner">
-        <div className="eyebrow">BITCOIN SENTINEL / BLOCKCHAIN INTELLIGENCE</div>
+        <div className="eyebrow">SENTINEL / BITCOIN INTELLIGENCE</div>
         <h1>
           See the signals.
           <br />
@@ -150,23 +150,72 @@ function HowItWorks() {
 }
 
 function Capabilities() {
+  const [expanded, setExpanded] = React.useState<string | null>(null);
+
   const caps = [
-    "Transaction Monitoring",
-    "AI Anomaly Detection",
-    "Risk & Priority Signals",
-    "Transaction Graph Explorer",
-    "Investigation Timeline",
-    "Dataset Analysis",
+    {
+      name: "Transaction Monitoring",
+      description:
+        "Continuously analyze Bitcoin transaction traffic to track flows, identify unusual activity, and surface transactions requiring investigation.",
+    },
+    {
+      name: "AI Anomaly Detection",
+      description:
+        "Use AI-driven behavioral analysis to identify transaction patterns that deviate from expected activity and may indicate suspicious behavior.",
+    },
+    {
+      name: "Risk & Priority Signals",
+      description:
+        "Assign priority to detected signals so investigators can focus first on transactions and entities requiring immediate attention.",
+    },
+    {
+      name: "Transaction Graph Explorer",
+      description:
+        "Visualize relationships between Bitcoin addresses and transactions, making complex fund flows easier to trace.",
+    },
+    {
+      name: "Investigation Timeline",
+      description:
+        "Organize important events chronologically so investigators can reconstruct how suspicious activity developed.",
+    },
+    {
+      name: "Dataset Analysis",
+      description:
+        "Analyze imported transaction datasets to uncover patterns, anomalies, and relationships within large volumes of blockchain data.",
+    },
   ];
+
   return (
     <section id="capabilities" className="caps">
       <h2>Built for transaction intelligence.</h2>
       <div className="caps-grid">
-        {caps.map((c) => (
-          <div className="cap-card" key={c}>
-            {c}
-          </div>
-        ))}
+        {caps.map(({ name, description }) => {
+          const isExpanded = expanded === name;
+
+          return (
+            <button
+              key={name}
+              type="button"
+              className={`cap-card${isExpanded ? " expanded" : ""}`}
+              aria-expanded={isExpanded}
+              aria-controls={`capability-panel-${name}`}
+              onClick={() => setExpanded((current) => (current === name ? null : name))}
+            >
+              <span className="cap-card-header">
+                <span className="cap-card-title">{name}</span>
+                <span className="cap-card-toggle" aria-hidden="true">
+                  {isExpanded ? "−" : "+"}
+                </span>
+              </span>
+              <span
+                id={`capability-panel-${name}`}
+                className={`cap-card-body${isExpanded ? " expanded" : ""}`}
+              >
+                {description}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -218,7 +267,7 @@ function Footer() {
   return (
     <footer className="landing-footer">
       <div>
-        <div className="brand-name">SENTINEL AI</div>
+        <div className="brand-name">SENTINEL</div>
         <small>BITCOIN INTELLIGENCE</small>
       </div>
       <div className="muted">

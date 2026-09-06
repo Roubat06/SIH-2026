@@ -134,13 +134,6 @@ small {
   height: 42px;
   border-radius: 11px;
 }
-.brand-ai {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--mint);
-  margin-left: 4px;
-  letter-spacing: 0;
-}
 .brand small {
   display: block;
   font-size: 8px;
@@ -449,7 +442,69 @@ main {
 .how-num { color: var(--mint); font-weight: 700; margin-bottom: 8px; }
 .caps { margin: 36px 0; }
 .caps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
-.cap-card { background: var(--panel); border: 1px solid var(--line); padding: 16px; border-radius: 8px; color: #d7e8df; }
+.cap-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 16px;
+  border-radius: 8px;
+  color: #d7e8df;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  font: inherit;
+}
+.cap-card:hover,
+.cap-card:focus-visible {
+  border-color: rgba(127, 233, 196, 0.7);
+  box-shadow: inset 0 0 0 1px rgba(127, 233, 196, 0.12);
+  outline: none;
+}
+.cap-card.expanded {
+  border-color: rgba(127, 233, 196, 0.7);
+}
+.cap-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cap-card-title {
+  flex: 1;
+  color: #d7e8df;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.cap-card-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--mint);
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.cap-card-body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  transition: max-height 280ms ease, opacity 220ms ease, margin-top 220ms ease;
+}
+.cap-card-body.expanded {
+  max-height: 180px;
+  opacity: 1;
+  margin-top: 12px;
+}
 .preview { display: flex; gap: 24px; align-items: center; margin: 42px 0; }
 .preview-frame { width: 560px; height: 320px; border-radius: 10px; background: linear-gradient(180deg, #0f1419, #081014); border: 1px solid var(--line); display: grid; place-items: center; }
 .preview-screenshot { width: 92%; height: 86%; border-radius: 8px; background: linear-gradient(90deg, rgba(255,255,255,0.02), transparent); box-shadow: 0 6px 30px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.02); }
