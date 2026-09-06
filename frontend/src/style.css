@@ -3890,3 +3890,95 @@ canvas {
     max-height: 96dvh;
   }
 }
+
+
+/* Keep the landing-page graph inside its visual frame at every viewport. */
+.preview {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.3fr);
+  gap: clamp(24px, 4vw, 56px);
+}
+.preview-text {
+  align-self: center;
+  max-width: 440px;
+}
+.preview-frame {
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  padding: clamp(14px, 2.2vw, 28px);
+  box-sizing: border-box;
+  overflow: hidden;
+  display: block;
+}
+.preview-screenshot {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+.preview-screenshot > .graph-wrap {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.preview-screenshot .graph-canvas {
+  width: 100%;
+  height: 100% !important;
+  min-height: 0;
+}
+
+@media (max-width: 1024px) {
+  .preview {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .preview-text {
+    max-width: 680px;
+  }
+  .preview-frame {
+    aspect-ratio: auto;
+    height: clamp(250px, 54vw, 390px);
+  }
+}
+
+@media (max-width: 720px) {
+  .preview {
+    gap: 22px;
+  }
+  .preview-frame {
+    width: 100%;
+    height: clamp(235px, 68vw, 320px);
+    padding: 12px;
+  }
+  .preview-screenshot {
+    width: 100%;
+    height: 100%;
+  }
+  .preview-screenshot .graph-key {
+    left: 10px;
+    gap: 9px;
+    font-size: 9px;
+  }
+  .preview-screenshot .graph-limit {
+    left: 10px;
+    bottom: 9px;
+    max-width: calc(100% - 118px);
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .preview-frame {
+    height: clamp(225px, 70vw, 270px);
+    padding: 10px;
+  }
+}

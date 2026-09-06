@@ -237,10 +237,7 @@ function ProductPreview() {
       </div>
       <div className="preview-frame">
         <div className="preview-screenshot">
-          {/* reuse existing Graph component for a live demo preview (read-only) */}
-          <div style={{ width: "92%", height: "86%" }}>
-            <Graph txid={demoAlerts[0].txid} caseId={"demo"} demo={true} />
-          </div>
+          <Graph txid={demoAlerts[0].txid} caseId={"demo"} demo={true} />
         </div>
       </div>
     </section>
