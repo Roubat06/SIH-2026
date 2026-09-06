@@ -18,7 +18,7 @@ edc8cd2d16340c8b32b3a177e160baa99a2dd65c8cb984ab75742cca67f3b7f7  ./backend/app/
 785727381d56963b3535d55364e29f63e077a7a2ea21671022dfc9fdf87d33ab  ./backend/app/worker.py
 ff6eb29adce0b0895ec99ff4d7325c98f467990ff8790d785bedc28e8a73601d  ./backend/requirements-dev.txt
 95f5dae0c21a5d3418fa51c544eaf5beae88cb0bb9a84079be4ab10914bc2ff6  ./backend/requirements.lock.txt
-afc73932da04b8833d5e39e973b53774f10039d995044c706eb1cd50b41938d3  ./backend/requirements.txt
+95f5dae0c21a5d3418fa51c544eaf5beae88cb0bb9a84079be4ab10914bc2ff6  ./backend/requirements.txt
 50102a4706ebcd9fa3b88ff5488c0cdc3ee3712b671c186e6e35d8c51baa6445  ./backend/tests/test_workflow.py
 3de31f66c606f6f0d75f39adaf418ad0c350c164580da1dd76825e9170eddf5e  ./compose.yaml
 ba8d27e22b853243b4e6dfadb958284f2fe1b6e0e78d6fdfd4a920e5d469e1ee  ./deploy/mongo-init.js
