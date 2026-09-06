@@ -77,7 +77,7 @@ function Hero() {
           Understand the chain.
         </h1>
         <p>
-          AI-powered monitoring and analysis of Bitcoin transaction traffic.
+          Continuous monitoring and analysis of Bitcoin transaction traffic.
           Detect unusual activity, investigate suspicious patterns, and turn
           blockchain data into actionable evidence.
         </p>
@@ -161,7 +161,7 @@ function Capabilities() {
     {
       name: "AI Anomaly Detection",
       description:
-        "Use AI-driven behavioral analysis to identify transaction patterns that deviate from expected activity and may indicate suspicious behavior.",
+        "Use behavioral analysis to identify transaction patterns that deviate from expected activity and may indicate suspicious behavior.",
     },
     {
       name: "Risk & Priority Signals",
@@ -271,7 +271,7 @@ function Footer() {
         <small>BITCOIN INTELLIGENCE</small>
       </div>
       <div className="muted">
-        IF-LOOP — AI-Powered Monitoring & Analysis of Bitcoin Transaction Traffic
+        IF-LOOP — Monitoring & Analysis of Bitcoin Transaction Traffic
       </div>
     </footer>
   );
