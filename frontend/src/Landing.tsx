@@ -4,9 +4,8 @@ import Graph from "./Graph";
 import { demoAlerts } from "./data";
 
 function Nav() {
-  const nav = ["Product", "How it works", "Capabilities"];
-  const goDashboard = () => {
-    window.history.pushState({}, "Dashboard", "/dashboard");
+  const goDashboard = (mode: "signin" | "signup") => {
+    window.history.pushState({}, "Dashboard", `/dashboard?auth=${mode}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   function scrollToId(id: string) {
@@ -54,8 +53,11 @@ function Nav() {
         >
           Capabilities
         </a>
-        <button className="button primary" onClick={goDashboard}>
-          Launch Sentinel Tool <ArrowRight size={14} />
+        <button className="button nav-signin" onClick={() => goDashboard("signin")}>
+          Sign in
+        </button>
+        <button className="button primary" onClick={() => goDashboard("signup")}>
+          Create account <ArrowRight size={14} />
         </button>
       </nav>
     </header>
@@ -63,8 +65,8 @@ function Nav() {
 }
 
 function Hero() {
-  const goDashboard = () => {
-    window.history.pushState({}, "Dashboard", "/dashboard");
+  const goDashboard = (mode: "signin" | "signup") => {
+    window.history.pushState({}, "Dashboard", `/dashboard?auth=${mode}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   return (
@@ -82,24 +84,11 @@ function Hero() {
           blockchain data into actionable evidence.
         </p>
         <div className="hero-actions">
-          <button className="button primary" onClick={goDashboard}>
-            Launch Sentinel Tool →
+          <button className="button primary" onClick={() => goDashboard("signup")}>
+            Create your account →
           </button>
-          <button
-            className="button"
-            onClick={(e) => {
-              e.preventDefault();
-              const header = document.querySelector(
-                ".landing-nav",
-              ) as HTMLElement | null;
-              const offset = header ? header.offsetHeight + 12 : 72;
-              const el = document.getElementById("capabilities");
-              if (!el) return;
-              const top = el.getBoundingClientRect().top + window.scrollY - offset;
-              window.scrollTo({ top, behavior: "smooth" });
-            }}
-          >
-            Explore capabilities
+          <button className="button" onClick={() => goDashboard("signin")}>
+            Sign in
           </button>
         </div>
       </div>
@@ -246,7 +235,7 @@ function ProductPreview() {
 
 function FinalCTA() {
   const go = () => {
-    window.history.pushState({}, "Dashboard", "/dashboard");
+    window.history.pushState({}, "Dashboard", "/dashboard?auth=signup");
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
   return (
@@ -254,7 +243,7 @@ function FinalCTA() {
       <h2>Follow the signals.</h2>
       <p>Turn transaction activity into evidence you can investigate.</p>
       <button className="button primary" onClick={go}>
-        Launch Sentinel Tool →
+        Create your account →
       </button>
     </section>
   );

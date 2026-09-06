@@ -18,7 +18,7 @@ Reports use schema version 1.1 and include the stored detection evidence and dat
 
 - A responsive React investigation dashboard, transaction search and detail panels, alert review, and Cytoscape graph exploration.
 - A clearly labeled, read-only synthetic demo available without credentials. Demo review changes exist only in browser memory; demo scores are illustrative.
-- Administrator-provisioned accounts; Argon2 password hashes; opaque expiring, server-revocable HttpOnly session cookies. No hardcoded passwords or public bootstrap endpoint.
+- Self-service analyst signup plus administrator-provisioned viewer accounts; Argon2 password hashes; signup and login throttling; opaque expiring, server-revocable HttpOnly session cookies. No hardcoded passwords or public administrator-bootstrap endpoint.
 - Case owners, analysts, and viewers. Backend authorization on every case operation. Workspace administrators can access all cases and create accounts. Ordinary analysts see only cases they own or are assigned to. Viewers cannot import, create cases, or review alerts.
 - CSV, JSON, XML uploads, SHA-256 source hashes, record lineage, input/output schema validation, and duplicate detection. Optional network observations in JSON.
 - Mongo-backed queued analysis with a separate worker for Docker/local use, request-scoped analysis for Vercel, visible processing stages, rule-based fan-out/fan-in signals, and deterministic Isolation Forest scoring for datasets of at least 40 records.

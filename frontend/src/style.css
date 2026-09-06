@@ -3982,3 +3982,56 @@ canvas {
     padding: 10px;
   }
 }
+
+
+/* Public account entry points and responsive authentication modal. */
+.auth-modal {
+  width: min(470px, 100%);
+}
+.auth-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+}
+.auth-switch .text-button,
+.demo-auth-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.demo-auth-link {
+  margin-top: 18px;
+}
+
+@media (max-width: 720px) {
+  .landing-nav-links .nav-signin {
+    display: none;
+  }
+  .auth-modal {
+    width: 100%;
+    max-height: min(92dvh, 720px);
+    padding: 30px 22px 24px;
+  }
+  .auth-modal .login-mark {
+    width: 52px;
+    height: 56px;
+    margin-bottom: 20px;
+  }
+  .auth-switch {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-nav-links .button.primary {
+    padding-inline: 11px;
+  }
+}

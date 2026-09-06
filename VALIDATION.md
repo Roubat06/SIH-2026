@@ -3,7 +3,7 @@
 ## Vercel readiness update
 
 - Vercel Services configuration matches the current service schema: Vite and FastAPI build from separate roots, API rewrites precede the frontend catch-all, and the backend entry point is app.main:app.
-- Backend regression suite: all 18 tests passed under Python 3.12 with the locked dependencies and isolated MongoDB mock. The added coverage verifies request-scoped Vercel analysis, automatic exact-origin trust, secure cookies, the 4 MB Vercel upload limit, and one-time administrator creation.
+- Backend regression suite: all 19 tests passed under Python 3.14 with the locked dependencies and isolated MongoDB mock. Coverage verifies self-service analyst signup, password hashing, signup and login throttling, case isolation, request-scoped Vercel analysis, exact-origin trust, secure cookies, the 4 MB Vercel upload limit, and one-time administrator creation.
 - React production build: passed with TypeScript and Vite (1,584 modules transformed).
 - JSON parsing, Python syntax parsing, Git whitespace checks, and Vercel source exclusions passed.
 - MongoDB Atlas credentials and a Vercel account are intentionally not stored in the repository. A live cloud deployment still requires the dashboard steps in DEPLOYMENT.md; no claim of live Atlas/Vercel integration testing is made.

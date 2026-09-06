@@ -12,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from pymongo.errors import DuplicateKeyError, PyMongoError
 import networkx as nx
 from .db import database, indexes, now, public
-from .security import passwords, DUMMY_HASH, current_user, digest, access, audit, login_limited
-from .models import Credentials, UserCreate, CaseCreate, MemberAdd, Review
+from .security import passwords, DUMMY_HASH, current_user, digest, access, audit, login_limited, signup_limited
+from .models import Credentials, Registration, UserCreate, CaseCreate, MemberAdd, Review
 from .analysis import training_data
 
 LOCAL_MAX_UPLOAD=10*1024*1024
@@ -30,6 +30,9 @@ def max_upload():
 def allowed_origins():
     configured=os.getenv('ALLOWED_ORIGINS','http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://127.0.0.1:8080')
     allowed={origin.strip().rstrip('/') for origin in configured.split(',') if origin.strip()}
+    canonical=os.getenv('CANONICAL_APP_ORIGIN','https://sentineltool.vercel.app').strip().rstrip('/')
+    if canonical:
+        allowed.add(canonical)
     # Vercel supplies these hostnames at runtime. Trust only the exact current and production hosts.
     for key in ('VERCEL_URL','VERCEL_PROJECT_PRODUCTION_URL'):
         host=os.getenv(key,'').strip().rstrip('/')
@@ -118,12 +121,26 @@ def login(body:Credentials,request:Request,response:Response):
     if not user or not valid:
         raise HTTPException(401,'Email or password is incorrect.')
     db.login_attempts.delete_one({'_id':key})
+    return start_session(db,user,response,'sign_in')
+
+def start_session(db,user,response,action):
     token=secrets.token_urlsafe(32)
     db.sessions.insert_one({'_id':digest(token),'user_id':user['_id'],'expires_at':now()+timedelta(hours=8)})
     secure=os.getenv('COOKIE_SECURE','true' if serverless_mode() else 'false').lower()=='true'
     response.set_cookie('sentinel_session',token,httponly=True,secure=secure,samesite='strict',max_age=8*3600,path='/api')
-    audit(user['_id'],None,'sign_in',{})
+    audit(user['_id'],None,action,{})
     return public(user)
+
+@app.post('/api/auth/signup',status_code=201)
+def signup(body:Registration,request:Request,response:Response):
+    db=database()
+    signup_limited(request.client.host if request.client else 'unknown')
+    record={'_id':secrets.token_hex(12),'email':body.email,'name':body.name,'role':'analyst','password_hash':passwords.hash(body.password),'created_at':now()}
+    try:
+        db.users.insert_one(record)
+    except DuplicateKeyError:
+        raise HTTPException(409,'An account with this email already exists. Sign in instead.')
+    return start_session(db,record,response,'account_created')
 
 @app.get('/api/auth/me')
 def me(user=Depends(current_user)):

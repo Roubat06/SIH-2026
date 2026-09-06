@@ -46,6 +46,8 @@ Choose **Deploy**. When the deployment completes:
 
 The bootstrap routine only creates an account while the users collection is empty. It never changes an existing account or creates a second administrator.
 
+New users can create analyst accounts from the public landing page. Each analyst initially sees no shared cases and can create a private investigation case. Viewer accounts and workspace-wide administrator access remain administrator-managed. Signup is rate-limited and never accepts a requested elevated role.
+
 ### 5. Vercel operating limits
 
 Vercel Functions reject request and response bodies above 4.5 MB. This project therefore caps Vercel file uploads at 4 MB, including CSV, JSON, and XML. Self-hosted deployments retain the 10 MB application limit.

@@ -66,6 +66,22 @@ def test_complete_import_analysis_review_export(client):
     assert client.post(f'/api/cases/{cid}/demo').status_code==409
     assert db.database().uploads.count_documents({})==1
 
+def test_public_signup_creates_isolated_analyst_session(client):
+    payload={'name':'New Analyst','email':'new.analyst@example.org','password':'Strong-signup-password-123','role':'admin'}
+    r=client.post('/api/auth/signup',json=payload,headers={'Origin':'https://sentineltool.vercel.app'})
+    assert r.status_code==201,r.text
+    assert r.json()['role']=='analyst'
+    stored=db.database().users.find_one({'email':'new.analyst@example.org'})
+    assert stored and stored['role']=='analyst'
+    assert stored['password_hash']!=payload['password']
+    assert client.get('/api/auth/me').json()['email']=='new.analyst@example.org'
+    assert client.get('/api/cases').json()==[]
+    assert client.post('/api/cases',json={'name':'My first investigation'}).status_code==201
+    duplicate=client.post('/api/auth/signup',json=payload)
+    assert duplicate.status_code==409
+    assert 'already exists' in duplicate.json()['detail']
+    assert client.post('/api/auth/signup',json={**payload,'email':'other@example.org','password':'short'}).status_code==422
+
 def test_auth_case_isolation_and_viewer_permissions(client):
     account(client);cid=case(client)
     viewer=account(client,'viewer@example.org','viewer',False)

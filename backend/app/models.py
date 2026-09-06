@@ -19,6 +19,18 @@ class UserCreate(Credentials):
     password: str = Field(min_length=12, max_length=256)
     role: Literal['analyst', 'viewer'] = 'analyst'
 
+class Registration(Credentials):
+    name: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=12, max_length=256)
+
+    @field_validator('name')
+    @classmethod
+    def valid_name(cls, value):
+        value = value.strip()
+        if len(value) < 2:
+            raise ValueError('Enter your name.')
+        return value
+
 class CaseCreate(BaseModel):
     name: str = Field(min_length=3, max_length=100)
     description: str = Field(default='', max_length=500)

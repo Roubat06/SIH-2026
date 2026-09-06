@@ -91,6 +91,7 @@ function Badge({ value }: { value: string }) {
   );
 }
 export default function App() {
+  const initialAuth = new URLSearchParams(window.location.search).get("auth");
   const [page, setPage] = useState<Page>("Overview"),
     [user, setUser] = useState<User | null>(null),
     [demo, setDemo] = useState(true),
@@ -99,7 +100,8 @@ export default function App() {
     [summary, setSummary] = useState<Summary>(demoSummary()),
     [alerts, setAlerts] = useState<Alert[]>(demoAlerts),
     [datasets, setDatasets] = useState<Dataset[]>([demoDataset]);
-  const [login, setLogin] = useState(false),
+  const [login, setLogin] = useState(initialAuth === "signin" || initialAuth === "signup"),
+    [signup, setSignup] = useState(initialAuth === "signup"),
     [create, setCreate] = useState(false),
     [selected, setSelected] = useState<Alert | null>(null),
     [txDetail, setTxDetail] = useState<{ txid: string } | null>(null),
@@ -211,6 +213,17 @@ export default function App() {
   function navigate(p: Page) {
     setPage(p);
   }
+  function openAuth(createAccount = false) {
+    setSignup(createAccount);
+    setError("");
+    setLogin(true);
+  }
+  function closeAuth() {
+    setLogin(false);
+    setSignup(false);
+    setError("");
+    if (window.location.search) window.history.replaceState({}, "Dashboard", "/dashboard");
+  }
   function showDemo() {
     setDemo(true);
     setCases([demoCase]);
@@ -220,7 +233,9 @@ export default function App() {
     setDatasets([demoDataset]);
     setGraphTx(demoAlerts[0].txid);
     setLogin(false);
+    setSignup(false);
     setError("");
+    if (window.location.search) window.history.replaceState({}, "Dashboard", "/dashboard");
   }
   async function submitLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -237,7 +252,36 @@ export default function App() {
       });
       setUser(u);
       await loadCases();
-      setLogin(false);
+      closeAuth();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function submitSignup(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    const password = String(form.get("password") || "");
+    if (password !== String(form.get("confirmPassword") || "")) {
+      setError("Passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const u = await api("/auth/signup", {
+        method: "POST",
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          password,
+        }),
+      });
+      setUser(u);
+      await loadCases();
+      closeAuth();
+      setNotice("Account created. Welcome to Sentinel Tool.");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -482,7 +526,7 @@ export default function App() {
                     setUser(null);
                     showDemo();
                   })
-                : setLogin(true)
+                : openAuth()
             }
           >
             <span className="avatar">
@@ -516,7 +560,7 @@ export default function App() {
               <i />
             </button>
             {!user && (
-              <button className="button small" onClick={() => setLogin(true)}>
+              <button className="button small" onClick={() => openAuth()}>
                 Sign in <ArrowUpRight size={14} />
               </button>
             )}
@@ -579,7 +623,7 @@ export default function App() {
                 <strong>Training workspace</strong> You’re exploring synthetic
                 data. Scores are illustrative, not live model results.
               </span>
-              <button onClick={() => (user ? loadCases() : setLogin(true))}>
+              <button onClick={() => (user ? loadCases() : openAuth())}>
                 Open my workspace <ArrowRight size={14} />
               </button>
             </div>
@@ -963,7 +1007,7 @@ export default function App() {
                   {demo && (
                     <button
                       className="text-button"
-                      onClick={() => setLogin(true)}
+                      onClick={() => openAuth()}
                     >
                       Sign in to upload your data <ArrowRight size={14} />
                     </button>
@@ -1084,7 +1128,7 @@ export default function App() {
                   </p>
                   <button
                     className="button primary"
-                    onClick={() => setLogin(true)}
+                    onClick={() => openAuth()}
                   >
                     Sign in <ArrowRight size={15} />
                   </button>
@@ -1228,18 +1272,18 @@ export default function App() {
         </div>
       )}
       {login && (
-        <div className="modal-overlay" onClick={() => setLogin(false)}>
+        <div className="modal-overlay" onClick={closeAuth}>
           <section
-            className="modal"
+            className="modal auth-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="login-title"
+            aria-labelledby="auth-title"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               className="modal-close"
-              aria-label="Close sign in"
-              onClick={() => setLogin(false)}
+              aria-label={signup ? "Close signup" : "Close sign in"}
+              onClick={closeAuth}
             >
               <X size={20} />
             </button>
@@ -1247,18 +1291,39 @@ export default function App() {
               <Shield size={28} />
             </span>
             <div className="eyebrow">YOUR INVESTIGATION WORKSPACE</div>
-            <h2 id="login-title">Welcome to Sentinel Tool.</h2>
-            <p>Sign in with your administrator-provided account.</p>
-            <form onSubmit={submitLogin}>
+            <h2 id="auth-title">
+              {signup ? "Create your Sentinel Tool account." : "Welcome to Sentinel Tool."}
+            </h2>
+            <p>
+              {signup
+                ? "Start a private workspace for your Bitcoin investigations."
+                : "Sign in to continue to your investigation workspace."}
+            </p>
+            <form onSubmit={signup ? submitSignup : submitLogin}>
+              {signup && (
+                <label>
+                  Full name
+                  <input
+                    autoFocus
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    minLength={2}
+                    maxLength={80}
+                    required
+                    placeholder="Your name"
+                  />
+                </label>
+              )}
               <label>
                 Email address
                 <input
-                  autoFocus
+                  autoFocus={!signup}
                   name="email"
                   type="email"
-                  autoComplete="username"
+                  autoComplete="email"
                   required
-                  placeholder="you@your-team.org"
+                  placeholder="you@example.com"
                 />
               </label>
               <label>
@@ -1266,26 +1331,55 @@ export default function App() {
                 <input
                   name="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete={signup ? "new-password" : "current-password"}
+                  minLength={signup ? 12 : 1}
+                  maxLength={256}
                   required
-                  placeholder="Enter your password"
+                  placeholder={signup ? "At least 12 characters" : "Enter your password"}
                 />
               </label>
+              {signup && (
+                <label>
+                  Confirm password
+                  <input
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    minLength={12}
+                    maxLength={256}
+                    required
+                    placeholder="Enter the password again"
+                  />
+                </label>
+              )}
               {error && (
                 <p className="danger" role="alert">
                   {error}
                 </p>
               )}
               <button className="button primary full" disabled={busy}>
-                {busy ? "Signing in…" : "Sign in securely"}
+                {busy
+                  ? signup
+                    ? "Creating account…"
+                    : "Signing in…"
+                  : signup
+                    ? "Create account"
+                    : "Sign in securely"}
                 <ArrowRight size={16} />
               </button>
             </form>
-            <div className="modal-note">
-              First setup? Follow the administrator setup in the deployment
-              guide.
+            <div className="auth-switch">
+              <span>{signup ? "Already have an account?" : "New to Sentinel Tool?"}</span>
+              <button
+                className="text-button"
+                onClick={() => openAuth(!signup)}
+                disabled={busy}
+              >
+                {signup ? "Sign in" : "Create an account"}
+                <ArrowRight size={14} />
+              </button>
             </div>
-            <button className="text-button" onClick={showDemo}>
+            <button className="text-button demo-auth-link" onClick={showDemo}>
               Explore synthetic demo instead <ArrowRight size={14} />
             </button>
           </section>

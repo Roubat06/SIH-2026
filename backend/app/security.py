@@ -46,3 +46,14 @@ def login_limited(email, ip):
         db.login_attempts.delete_one({'_id': key})
     db.login_attempts.update_one({'_id': key}, {'$inc': {'count': 1}, '$setOnInsert': {'expires_at': now() + timedelta(minutes=15)}}, upsert=True)
     return key
+
+def signup_limited(ip):
+    db = database()
+    key = digest('signup|' + ip)
+    record = db.login_attempts.find_one({'_id': key})
+    if record and record['expires_at'] > now() and record['count'] >= 5:
+        raise HTTPException(429, 'Too many signup attempts. Try again in 15 minutes.')
+    if record and record['expires_at'] <= now():
+        db.login_attempts.delete_one({'_id': key})
+    db.login_attempts.update_one({'_id': key}, {'$inc': {'count': 1}, '$setOnInsert': {'expires_at': now() + timedelta(minutes=15)}}, upsert=True)
+    return key
