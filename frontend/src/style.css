@@ -2858,3 +2858,191 @@ textarea {
     padding-right: 16px;
   }
 }
+
+/* Larger, clearer interface typography */
+body {
+  font-size: 15px;
+}
+h1 {
+  font-size: 42px;
+  letter-spacing: -1.9px;
+}
+h2 {
+  font-size: 18px;
+}
+h3 {
+  font-size: 15px;
+}
+p {
+  font-size: 15px;
+}
+small {
+  font-size: 12px;
+}
+.mono {
+  font-size: 12px;
+}
+.brand {
+  font-size: 21px;
+}
+.brand small {
+  font-size: 10px;
+}
+.workspace-label,
+.eyebrow {
+  font-size: 11px;
+}
+.workspace-switch,
+.sidebar button {
+  font-size: 13px;
+}
+.workspace-switch small,
+.user-card small,
+.local-status {
+  font-size: 11px;
+}
+.local-status small {
+  font-size: 10px;
+}
+.breadcrumbs {
+  font-size: 12px;
+}
+.environment {
+  font-size: 11px;
+}
+.page-heading p {
+  font-size: 15px;
+}
+.button,
+.text-button,
+.case-select select {
+  font-size: 13px;
+}
+.button.small {
+  font-size: 12px;
+}
+.demo-banner,
+.demo-banner button {
+  font-size: 12px;
+}
+.case-desc,
+.small-label {
+  font-size: 12px;
+}
+.stat-label {
+  font-size: 13px;
+}
+.stat-value {
+  font-size: 38px;
+}
+.stat-value small {
+  font-size: 13px;
+}
+.stat-detail {
+  font-size: 12px;
+}
+.panel-heading p,
+.priority-total > span,
+.priority-line,
+.chart-legend {
+  font-size: 12px;
+}
+.chip,
+.badge,
+.stage-pill {
+  font-size: 11px;
+}
+.chart-note {
+  font-size: 11px;
+}
+.chart-grid > span,
+.bar-slot > span,
+.graph-key,
+.graph-limit {
+  font-size: 10px;
+}
+th {
+  font-size: 11px;
+}
+td {
+  font-size: 13px;
+}
+.sub,
+.status,
+.count-bubble {
+  font-size: 11px;
+}
+.search input,
+.graph-search input,
+.filter select,
+.table-footer {
+  font-size: 13px;
+}
+.dataset-info strong {
+  font-size: 14px;
+}
+.dataset-info span,
+.dataset-info small {
+  font-size: 12px;
+}
+.empty p,
+.upload-panel p,
+.import-guide p {
+  font-size: 14px;
+}
+.import-guide > div:not(.guide-actions) {
+  font-size: 13px;
+}
+.graph-footer,
+.graph-loading small {
+  font-size: 11px;
+}
+.section-label {
+  font-size: 11px;
+}
+.signal-card strong {
+  font-size: 14px;
+}
+.signal-card p,
+.signal-card > small,
+.micro-copy,
+.detection-summary > div,
+.stage-history,
+.timeline-content {
+  font-size: 12px;
+}
+.evidence-values small,
+.pipeline-strip > div,
+.pipeline-strip b {
+  font-size: 10px;
+}
+.timeline-event time {
+  font-size: 11px;
+}
+label,
+input,
+select,
+textarea {
+  font-size: 13px;
+}
+footer {
+  font-size: 10px;
+}
+@media (max-width: 900px) {
+  h1 {
+    font-size: 38px;
+  }
+}
+@media (max-width: 650px) {
+  h1 {
+    font-size: 34px;
+  }
+  .page-heading p {
+    font-size: 14px;
+  }
+  .button,
+  .text-button,
+  .case-select select {
+    font-size: 12px;
+  }
+}
