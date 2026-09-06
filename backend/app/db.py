@@ -13,7 +13,7 @@ def database():
     if _test_db is not None:
         return _test_db
     if _client is None:
-        _client = MongoClient(os.getenv('MONGO_URI', 'mongodb://127.0.0.1:27017'), serverSelectionTimeoutMS=3000, tz_aware=True)
+        _client = MongoClient(os.getenv('MONGO_URI') or os.getenv('MONGODB_URI') or 'mongodb://127.0.0.1:27017', serverSelectionTimeoutMS=3000, tz_aware=True)
     return _client[os.getenv('MONGO_DB', 'bitcoin_sentinel')]
 
 def indexes(db):

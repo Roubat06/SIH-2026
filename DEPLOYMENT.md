@@ -25,7 +25,7 @@ In **Project Settings -> Environment Variables**, add these values to Production
 
 | Name | Value |
 | --- | --- |
-| MONGO_URI | The complete MongoDB Atlas application connection string |
+| MONGO_URI or MONGODB_URI | The MongoDB Atlas connection string. The Vercel integration supplies MONGODB_URI automatically. |
 | MONGO_DB | bitcoin_sentinel |
 | BOOTSTRAP_ADMIN_EMAIL | The email address for the first administrator |
 | BOOTSTRAP_ADMIN_NAME | The display name for the first administrator |
