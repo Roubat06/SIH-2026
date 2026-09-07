@@ -1,16 +1,39 @@
-.venv/
-.local/
+# Environments
 .env
-.env.*
-!.env.example
-**/node_modules/
-**/dist/
-**/__pycache__/
-**/.pytest_cache/
-.pytest_cache/
-*.pyc
-*.tsbuildinfo
-*.log
-.vercel/
+.env.local
+.venv
+env/
+venv/
+ENV/
 
-tmp/
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.sqlite
+*.sqlite3
+*.db
+backend/data/*.db
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

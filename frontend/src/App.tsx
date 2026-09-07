@@ -1,1561 +1,1696 @@
-import { useEffect, useState, useRef, type FormEvent } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
-  Activity,
-  ArrowDownToLine,
-  ArrowRight,
-  ArrowUpRight,
-  Bell,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Database,
-  FileText,
-  FolderOpen,
   LayoutDashboard,
-  LogIn,
-  LogOut,
-  Network,
-  Plus,
+  Activity,
+  ShieldAlert,
+  Briefcase,
+  GitBranch,
+  Bot,
+  BookOpen,
+  FileCheck,
+  ClipboardList,
+  Sliders,
   Search,
-  Shield,
-  ShieldCheck,
-  SlidersHorizontal,
-  Upload,
-  Users,
-  X,
-  AlertTriangle,
-  Clock,
+  Filter,
   RefreshCw,
+  Plus,
+  ArrowUpRight,
+  ExternalLink,
+  ChevronRight,
+  AlertTriangle,
   CheckCircle2,
-  Info,
+  Clock,
+  Sparkles,
+  Download,
+  Eye,
+  LogOut,
+  UserCheck,
+  Send,
+  HelpCircle,
+  Database,
+  Layers,
+  ChevronDown,
 } from "lucide-react";
-import Graph from "./Graph";
 import {
-  RecordsView,
-  Timeline,
-  TransactionDrawer,
-  DetectionEvidence,
-  StagePill,
-  utc,
-} from "./Investigation";
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import Graph from "./Graph";
 import {
   api,
   btc,
-  demoAlerts,
-  demoCase,
-  demoDataset,
-  demoGraph,
-  demoSummary,
-  demoTx,
-  download,
+  sats,
   short,
+  timeAgo,
+  downloadReportJSON,
+  type User,
+  type DashboardSummary,
+  type Tx,
   type Alert,
   type Case,
-  type Dataset,
-  type Summary,
-  type Tx,
-  type User,
+  type GraphResponse,
+  type AIAnalysisResponse,
+  type AuditLog,
 } from "./data";
-type Page =
-  | "Overview"
-  | "Transactions"
-  | "Alert queue"
-  | "Investigation timeline"
-  | "Graph explorer"
-  | "Datasets"
-  | "Team & access";
-const nav = [
-  { name: "Overview", icon: LayoutDashboard },
-  { name: "Transactions", icon: Activity },
-  { name: "Alert queue", icon: ShieldCheck },
-  { name: "Graph explorer", icon: Network },
-  { name: "Investigation timeline", icon: Clock },
-  { name: "Datasets", icon: Database },
-] as const;
-const date = (s: string) =>
-  new Date(s).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-function Badge({ value }: { value: string }) {
-  return (
-    <span className={`badge ${value}`}>
-      {value === "high"
-        ? "High priority"
-        : value === "medium"
-          ? "Medium"
-          : value}
-    </span>
-  );
-}
+
+type NavTab =
+  | "dashboard"
+  | "transactions"
+  | "alerts"
+  | "cases"
+  | "graph"
+  | "ai_analyst"
+  | "knowledge_base"
+  | "reports"
+  | "audit_logs"
+  | "model_eval";
+
+const NAV_ITEMS: { id: NavTab; label: string; icon: React.ElementType }[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "transactions", label: "Transactions", icon: Activity },
+  { id: "alerts", label: "Alert Queue", icon: ShieldAlert },
+  { id: "cases", label: "Investigations", icon: Briefcase },
+  { id: "graph", label: "Graph Explorer", icon: GitBranch },
+  { id: "ai_analyst", label: "AI Analyst", icon: Bot },
+  { id: "knowledge_base", label: "Forensic RAG", icon: BookOpen },
+  { id: "reports", label: "Reports", icon: FileCheck },
+  { id: "audit_logs", label: "Audit Logs", icon: ClipboardList },
+  { id: "model_eval", label: "ML & Engine", icon: Sliders },
+];
+
+const SEVERITY_COLORS: Record<string, string> = {
+  LOW: "#38bdf8",
+  MEDIUM: "#e8b36a",
+  HIGH: "#fb923c",
+  CRITICAL: "#f87171",
+};
+
 export default function App() {
-  const initialAuth = new URLSearchParams(window.location.search).get("auth");
-  const [page, setPage] = useState<Page>("Overview"),
-    [user, setUser] = useState<User | null>(null),
-    [demo, setDemo] = useState(true),
-    [cases, setCases] = useState<Case[]>([demoCase]),
-    [current, setCurrent] = useState<Case>(demoCase),
-    [summary, setSummary] = useState<Summary>(demoSummary()),
-    [alerts, setAlerts] = useState<Alert[]>(demoAlerts),
-    [datasets, setDatasets] = useState<Dataset[]>([demoDataset]);
-  const [login, setLogin] = useState(initialAuth === "signin" || initialAuth === "signup"),
-    [signup, setSignup] = useState(initialAuth === "signup"),
-    [create, setCreate] = useState(false),
-    [selected, setSelected] = useState<Alert | null>(null),
-    [txDetail, setTxDetail] = useState<{ txid: string } | null>(null),
-    [graphTx, setGraphTx] = useState(demoAlerts[0].txid),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
-    [busy, setBusy] = useState(false),
-    [loading, setLoading] = useState(false),
-    [members, setMembers] = useState<any[]>([]);
-  const activeCase = useRef(current.id);
-  activeCase.current = current.id;
-  const canWrite = !demo && ["admin", "analyst"].includes(current.member_role);
-  async function loadCases() {
-    const list = await api("/cases");
-    setCases(list);
-    setCurrent(
-      list[0] || {
-        id: "",
-        name: "No cases yet",
-        description: "Create your first investigation case",
-        member_role: "admin",
-      },
-    );
-    setDemo(false);
-  }
+  const [activeTab, setActiveTab] = useState<NavTab>("dashboard");
+  const [user, setUser] = useState<User | null>(null);
+  const [authEmail, setAuthEmail] = useState("analyst@sentinel.sec");
+  const [authPassword, setAuthPassword] = useState("analyst123");
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authError, setAuthError] = useState("");
+
+  // Notification / Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Global Contexts
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+  const [syncingBitcoin, setSyncingBitcoin] = useState(false);
+
+  // Transactions Tab
+  const [transactions, setTransactions] = useState<Tx[]>([]);
+  const [totalTxCount, setTotalTxCount] = useState(0);
+  const [txSearch, setTxSearch] = useState("");
+  const [txRiskFilter, setTxRiskFilter] = useState("");
+  const [selectedTx, setSelectedTx] = useState<Tx | null>(null);
+  const [loadingTx, setLoadingTx] = useState(false);
+
+  // Alerts Tab
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [totalAlertsCount, setTotalAlertsCount] = useState(0);
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState("");
+  const [alertStatusFilter, setAlertStatusFilter] = useState("");
+  const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+
+  // Cases Tab
+  const [cases, setCases] = useState<Case[]>([]);
+  const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+  const [newCaseTitle, setNewCaseTitle] = useState("");
+  const [newCaseDesc, setNewCaseDesc] = useState("");
+  const [newCasePriority, setNewCasePriority] = useState("MEDIUM");
+  const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
+  const [newCaseNote, setNewCaseNote] = useState("");
+
+  // Graph Tab
+  const [graphTxid, setGraphTxid] = useState("");
+  const [graphData, setGraphData] = useState<GraphResponse | null>(null);
+  const [loadingGraph, setLoadingGraph] = useState(false);
+  const [selectedGraphNode, setSelectedGraphNode] = useState<string | null>(null);
+
+  // AI Analyst Tab
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiTargetTxid, setAiTargetTxid] = useState("");
+  const [aiCaseId, setAiCaseId] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResponse | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  // Knowledge Base Tab
+  const [ragQuery, setRagQuery] = useState("What is a Peel Chain in Bitcoin analysis?");
+  const [ragResults, setRagResults] = useState<any[]>([]);
+  const [loadingRAG, setLoadingRAG] = useState(false);
+
+  // Reports Tab
+  const [reportCaseId, setReportCaseId] = useState("");
+  const [reportData, setReportData] = useState<any | null>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+
+  // Audit Logs Tab
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+
+  // ML / Engine Tab
+  const [modelStatus, setModelStatus] = useState<any | null>(null);
+  const [modelEvaluation, setModelEvaluation] = useState<any | null>(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Auth Initialization
   useEffect(() => {
-    api("/auth/me")
-      .then((u) => {
-        setUser(u);
-        return loadCases();
-      })
-      .catch(() => {});
+    const token = localStorage.getItem("sentinel_jwt_token");
+    if (token) {
+      api.getMe()
+        .then((u) => setUser(u))
+        .catch(() => {
+          localStorage.removeItem("sentinel_jwt_token");
+          setUser(null);
+        });
+    }
   }, []);
-  async function refresh() {
-    if (demo) return;
-    setError("");
-    if (!current.id) {
-      setSummary({
-        transactions: 0,
-        total_output_sats: 0,
-        alerts_count: 0,
-        high_priority: 0,
-        chart: [],
-        alerts: [],
-        datasets: [],
-      });
-      setAlerts([]);
-      setDatasets([]);
-      return;
-    }
-    setLoading(true);
-    const requestedCase = current.id;
+
+  // Fetch Dashboard Summary
+  const loadDashboard = async () => {
+    setLoadingDashboard(true);
     try {
-      const [s, a, d] = await Promise.all([
-        api(`/cases/${current.id}/summary`),
-        api(`/cases/${current.id}/alerts`),
-        api(`/cases/${current.id}/datasets`),
+      const data = await api.getDashboard();
+      setDashboardData(data);
+    } catch (err: any) {
+      console.error("Dashboard error:", err);
+    } finally {
+      setLoadingDashboard(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  // Sync Ingestion Trigger
+  const handleSyncIngestion = async () => {
+    setSyncingBitcoin(true);
+    try {
+      const res = await api.syncBitcoin(10, false);
+      showToast(`Ingestion completed: Processed ${res.transactions_processed} TXs, Generated ${res.alerts_generated} Alerts.`);
+      await loadDashboard();
+      if (activeTab === "transactions") loadTransactions();
+      if (activeTab === "alerts") loadAlerts();
+    } catch (err: any) {
+      showToast(`Sync error: ${err.message}`);
+    } finally {
+      setSyncingBitcoin(false);
+    }
+  };
+
+  // Login Handlers
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError("");
+    try {
+      const res = await api.login(authEmail, authPassword);
+      localStorage.setItem("sentinel_jwt_token", res.access_token);
+      setUser(res.user);
+      setIsAuthModalOpen(false);
+      showToast(`Logged in as ${res.user.name} (${res.user.role})`);
+      loadDashboard();
+    } catch (err: any) {
+      setAuthError(err.message || "Invalid credentials");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("sentinel_jwt_token");
+    setUser(null);
+    showToast("Signed out.");
+  };
+
+  // Load Transactions
+  const loadTransactions = async () => {
+    setLoadingTx(true);
+    try {
+      const params = new URLSearchParams();
+      if (txRiskFilter) params.append("risk_level", txRiskFilter);
+      if (txSearch) params.append("search", txSearch);
+      params.append("limit", "50");
+      const res = await api.getTransactions(params.toString());
+      setTransactions(res.items);
+      setTotalTxCount(res.total);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingTx(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "transactions") {
+      loadTransactions();
+    }
+  }, [activeTab, txRiskFilter]);
+
+  // Load Alerts
+  const loadAlerts = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (alertSeverityFilter) params.append("severity", alertSeverityFilter);
+      if (alertStatusFilter) params.append("status", alertStatusFilter);
+      params.append("limit", "50");
+      const res = await api.getAlerts(params.toString());
+      setAlerts(res.items);
+      setTotalAlertsCount(res.total);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "alerts") {
+      loadAlerts();
+    }
+  }, [activeTab, alertSeverityFilter, alertStatusFilter]);
+
+  // Load Cases
+  const loadCases = async () => {
+    try {
+      const list = await api.getCases();
+      setCases(list);
+      if (list.length > 0 && !selectedCase) {
+        loadCaseDetail(list[0].id);
+      }
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const loadCaseDetail = async (caseId: string) => {
+    try {
+      const c = await api.getCase(caseId);
+      setSelectedCase(c);
+      setReportCaseId(caseId);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "cases") {
+      loadCases();
+    }
+  }, [activeTab]);
+
+  // Load Graph
+  const loadGraph = async (txid: string) => {
+    if (!txid) return;
+    setLoadingGraph(true);
+    try {
+      const g = await api.getGraph(txid);
+      setGraphData(g);
+    } catch (err: any) {
+      showToast(`Graph fetch error: ${err.message}`);
+    } finally {
+      setLoadingGraph(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "graph" && graphTxid) {
+      loadGraph(graphTxid);
+    }
+  }, [activeTab]);
+
+  // Load Models
+  const loadModels = async () => {
+    setLoadingModels(true);
+    try {
+      const [status, evalData] = await Promise.all([
+        api.getModelStatus(),
+        api.getModelEvaluation(),
       ]);
-      if (activeCase.current !== requestedCase) return;
-      setSummary(s);
-      setAlerts(a);
-      setDatasets(d);
-      setGraphTx(a[0]?.txid || "");
-    } catch (e) {
-      setError((e as Error).message);
+      setModelStatus(status);
+      setModelEvaluation(evalData);
+    } catch (err: any) {
+      console.error(err);
     } finally {
-      setLoading(false);
+      setLoadingModels(false);
     }
-  }
+  };
+
   useEffect(() => {
-    void refresh();
-  }, [current.id, demo]);
+    if (activeTab === "model_eval") {
+      loadModels();
+    }
+  }, [activeTab]);
+
+  // Load Audit
+  const loadAuditLogs = async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await api.getAuditLogs(100);
+      setAuditLogs(res.items);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   useEffect(() => {
-    if (demo || !current.id) return;
-    let active = true;
-    const timer = setTimeout(
-      () =>
-        api(`/cases/${current.id}/transactions?offset=0`)
-          .then((r) => {
-            if (active) {
-              if (!graphTx && r.items[0]) setGraphTx(r.items[0].txid);
-            }
-          })
-          .catch((e) => active && setError(e.message)),
-      200,
-    );
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [current.id, demo, summary.transactions]);
-  useEffect(() => {
-    if (demo || !datasets.some((d) => ["queued", "running"].includes(d.status)))
-      return;
-    const timer = setInterval(() => void refresh(), 2500);
-    return () => clearInterval(timer);
-  }, [datasets, demo]);
-  useEffect(() => {
-    if (!notice) return;
-    const t = setTimeout(() => setNotice(""), 5000);
-    return () => clearTimeout(t);
-  }, [notice]);
-  useEffect(() => {
-    if (page === "Team & access" && !demo && current.id)
-      api(`/cases/${current.id}/members`)
-        .then(setMembers)
-        .catch((e) => setError(e.message));
-  }, [page, current.id, demo]);
-  function navigate(p: Page) {
-    setPage(p);
-  }
-  function openAuth(createAccount = false) {
-    setSignup(createAccount);
-    setError("");
-    setLogin(true);
-  }
-  function closeAuth() {
-    setLogin(false);
-    setSignup(false);
-    setError("");
-    if (window.location.search) window.history.replaceState({}, "Dashboard", "/dashboard");
-  }
-  function showDemo() {
-    setDemo(true);
-    setCases([demoCase]);
-    setCurrent(demoCase);
-    setSummary(demoSummary());
-    setAlerts(demoAlerts);
-    setDatasets([demoDataset]);
-    setGraphTx(demoAlerts[0].txid);
-    setLogin(false);
-    setSignup(false);
-    setError("");
-    if (window.location.search) window.history.replaceState({}, "Dashboard", "/dashboard");
-  }
-  async function submitLogin(e: FormEvent<HTMLFormElement>) {
+    if (activeTab === "audit_logs") {
+      loadAuditLogs();
+    }
+  }, [activeTab]);
+
+  // Action: Create Case
+  const handleCreateCase = async (e: React.FormEvent) => {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    setBusy(true);
-    setError("");
+    if (!newCaseTitle.trim()) return;
     try {
-      const u = await api("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({
-          email: form.get("email"),
-          password: form.get("password"),
-        }),
+      const c = await api.createCase({
+        title: newCaseTitle,
+        description: newCaseDesc,
+        priority: newCasePriority,
+        txids: selectedTx ? [selectedTx.txid] : selectedAlert ? [selectedAlert.txid] : [],
       });
-      setUser(u);
-      await loadCases();
-      closeAuth();
-    } catch (e) {
-      setError((e as Error).message);
+      showToast(`Case "${c.title}" created successfully.`);
+      setIsNewCaseModalOpen(false);
+      setNewCaseTitle("");
+      setNewCaseDesc("");
+      loadCases();
+      setSelectedCase(c);
+      setActiveTab("cases");
+    } catch (err: any) {
+      showToast(`Error creating case: ${err.message}`);
+    }
+  };
+
+  // Action: Add Case Note
+  const handleAddCaseNote = async () => {
+    if (!selectedCase || !newCaseNote.trim()) return;
+    try {
+      await api.addCaseNote(selectedCase.id, newCaseNote);
+      showToast("Analyst note added.");
+      setNewCaseNote("");
+      loadCaseDetail(selectedCase.id);
+    } catch (err: any) {
+      showToast(`Error adding note: ${err.message}`);
+    }
+  };
+
+  // Action: Update Alert Status
+  const handleUpdateAlertStatus = async (alertId: string, newStatus: string) => {
+    try {
+      await api.updateAlertStatus(alertId, newStatus);
+      showToast(`Alert status updated to ${newStatus}`);
+      loadAlerts();
+      if (selectedAlert && selectedAlert.id === alertId) {
+        setSelectedAlert({ ...selectedAlert, status: newStatus as any });
+      }
+    } catch (err: any) {
+      showToast(`Update error: ${err.message}`);
+    }
+  };
+
+  // Action: Trigger AI Analysis
+  const handleAIQuery = async (customPrompt?: string) => {
+    const p = customPrompt || aiPrompt;
+    if (!p.trim()) return;
+    setLoadingAI(true);
+    try {
+      const res = await api.queryAIAnalyst(p, aiTargetTxid || undefined, aiCaseId || undefined, true);
+      setAiAnalysis(res);
+      showToast("AI forensic analysis generated.");
+    } catch (err: any) {
+      showToast(`AI query error: ${err.message}`);
     } finally {
-      setBusy(false);
+      setLoadingAI(false);
     }
-  }
-  async function submitSignup(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const password = String(form.get("password") || "");
-    if (password !== String(form.get("confirmPassword") || "")) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setBusy(true);
-    setError("");
+  };
+
+  // Action: Trigger RAG Search
+  const handleRAGSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!ragQuery.trim()) return;
+    setLoadingRAG(true);
     try {
-      const u = await api("/auth/signup", {
-        method: "POST",
-        body: JSON.stringify({
-          name: form.get("name"),
-          email: form.get("email"),
-          password,
-        }),
-      });
-      setUser(u);
-      await loadCases();
-      closeAuth();
-      setNotice("Account created. Welcome to Sentinel Tool.");
-    } catch (e) {
-      setError((e as Error).message);
+      const res = await api.searchKnowledge(ragQuery, 4);
+      setRagResults(res.results);
+    } catch (err: any) {
+      showToast(`RAG error: ${err.message}`);
     } finally {
-      setBusy(false);
+      setLoadingRAG(false);
     }
-  }
-  async function createCase(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const f = new FormData(e.currentTarget);
-    setBusy(true);
+  };
+
+  // Action: Generate Report
+  const handleGenerateReport = async (caseId: string) => {
+    if (!caseId) return;
+    setLoadingReport(true);
     try {
-      const c = await api("/cases", {
-        method: "POST",
-        body: JSON.stringify({
-          name: f.get("name"),
-          description: f.get("description"),
-        }),
-      });
-      setCases([...cases, c]);
-      setCurrent(c);
-      setCreate(false);
-      setNotice("Investigation case created.");
-    } catch (e) {
-      setError((e as Error).message);
+      const res = await api.generateReport(caseId);
+      setReportData(res);
+      showToast("Investigation report compiled.");
+    } catch (err: any) {
+      showToast(`Report error: ${err.message}`);
     } finally {
-      setBusy(false);
+      setLoadingReport(false);
     }
-  }
-  async function upload(file: File) {
-    if (!current.id) return;
-    setBusy(true);
-    setError("");
-    const data = new FormData();
-    data.append("file", file);
-    try {
-      const result = await api(`/cases/${current.id}/datasets`, {
-        method: "POST",
-        body: data,
-      });
-      setNotice(
-        result.status === "completed"
-          ? "Dataset validated and analyzed."
-          : result.status === "failed"
-            ? "Dataset validation failed. Review its recorded error."
-            : "Dataset queued. Validation and analysis will run in the background.",
-      );
-      await refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function seedDemo() {
-    setBusy(true);
-    try {
-      const result = await api(`/cases/${current.id}/demo`, { method: "POST" });
-      setNotice(
-        result.status === "completed"
-          ? "Synthetic training dataset analyzed."
-          : "Synthetic training dataset queued.",
-      );
-      await refresh();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function report() {
-    try {
-      const data = demo
-        ? {
-            case: demoCase,
-            alerts,
-            dataset: demoDataset,
-            disclaimer:
-              "SYNTHETIC DEMO — illustrative scores, not measured model results. Unusual activity is not proof of wrongdoing.",
-          }
-        : await api(`/cases/${current.id}/report`);
-      download(data, `sentinel-evidence-${current.id}.json`);
-      setNotice("Evidence report exported.");
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-  async function review(a: Alert) {
-    try {
-      const updated = demo
-        ? {
-            ...a,
-            status: a.status === "open" ? "reviewed" : "open",
-            reviewed_at: new Date().toISOString(),
-          }
-        : await api(`/cases/${current.id}/alerts/${a.id}`, {
-            method: "PATCH",
-            body: JSON.stringify({
-              status: a.status === "open" ? "reviewed" : "open",
-            }),
-          });
-      setAlerts(alerts.map((x) => (x.id === a.id ? updated : x)));
-      setSelected(updated);
-      setNotice(
-        demo
-          ? "Demo review updated for this session only."
-          : "Review status saved.",
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }
-  function alertTable(rows: Alert[]) {
-    return (
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Signal / transaction</th>
-              <th>Priority</th>
-              <th>
-                Anomaly score <Info size={12} />
-              </th>
-              <th>Status</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((a) => (
-              <tr key={a.id} onClick={() => setSelected(a)}>
-                <td>
-                  <button
-                    className="text-button"
-                    onClick={() => setSelected(a)}
-                  >
-                    {a.title}
-                  </button>
-                  <span className="mono sub">{short(a.txid)}</span>
-                  <StagePill stage={a.first_detected_stage} />
-                </td>
-                <td>
-                  <Badge value={a.severity} />
-                </td>
-                <td>
-                  <span className="score">
-                    {a.model_version?.startsWith("rules-only")
-                      ? "—"
-                      : a.score.toFixed(0)}
-                    <small>/100</small>
-                  </span>
-                  <span className="score-track">
-                    <i style={{ width: `${a.score}%` }} />
-                  </span>
-                </td>
-                <td>
-                  <span className={`status ${a.status}`}>
-                    <i />
-                    {a.status === "open" ? "Needs review" : "Reviewed"}
-                  </span>
-                </td>
-                <td>
-                  <ChevronRight size={15} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && (
-          <div className="empty">
-            <ShieldCheck />
-            <h3>No alerts to show</h3>
-            <p>Import a dataset or adjust your filters.</p>
-          </div>
-        )}
-      </div>
-    );
-  }
+  };
+
+  // Quick jump helpers
+  const jumpToGraph = (txid: string) => {
+    setGraphTxid(txid);
+    setActiveTab("graph");
+    loadGraph(txid);
+  };
+
+  const jumpToAI = (txid: string, initialPrompt?: string) => {
+    setAiTargetTxid(txid);
+    if (initialPrompt) setAiPrompt(initialPrompt);
+    setActiveTab("ai_analyst");
+  };
+
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a
-          className="brand"
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("Overview");
-          }}
-        >
-          <span className="brand-symbol">
-            <Shield size={22} />
-          </span>
-          <span>
-            SENTINEL TOOL
-            <small>AI-POWERED BITCOIN INTELLIGENCE</small>
-          </span>
-        </a>
-        <div className="workspace-label">WORKSPACE</div>
-        <div className="workspace-switch">
-          <span className="workspace-icon">ST</span>
-          <span>
-            SENTINEL TOOL<small>Investigation workspace</small>
-          </span>
-          <ShieldCheck size={15} />
+    <div className="app-shell" style={{ display: "flex", minHeight: "100vh", background: "#0c1016" }}>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{ position: "fixed", bottom: "24px", right: "24px", zIndex: 1000, background: "#172b25", border: "1px solid #79dfb8", color: "#79dfb8", padding: "12px 18px", borderRadius: "6px", fontSize: "13px", boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: "10px" }}>
+          <Sparkles size={16} />
+          <span>{toastMessage}</span>
         </div>
-        <div className="workspace-label">INVESTIGATE</div>
-        <nav>
-          {nav.map(({ name, icon: Icon }) => (
-            <button
-              key={name}
-              className={page === name ? "active" : ""}
-              onClick={() => navigate(name)}
-            >
-              <Icon size={18} />
-              <span>{name}</span>
-              {name === "Alert queue" && (
-                <b>{alerts.filter((a) => a.status === "open").length}</b>
-              )}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <button
-            className={page === "Team & access" ? "active" : ""}
-            onClick={() => navigate("Team & access")}
-          >
-            <Users size={18} />
-            Team & access
-          </button>
-          <div className="local-status">
-            <span className="live-dot" />
-            <div>
-              {demo ? "Demo environment" : "Private workspace"}
-              <small>
-                {demo ? "Synthetic data only" : "Case-scoped access controls"}
-              </small>
-            </div>
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside className="sidebar" style={{ width: "240px", flexShrink: 0 }}>
+        <div className="brand" style={{ display: "flex", alignItems: "center", gap: "10px", padding: "16px 12px 24px" }}>
+          <div className="brand-symbol" style={{ background: "#172b25", color: "#79dfb8", width: "36px", height: "36px", borderRadius: "8px", display: "grid", placeItems: "center", fontWeight: "bold" }}>
+            S
           </div>
-          <button
-            className="user-card"
-            onClick={() =>
-              user
-                ? api("/auth/logout", { method: "POST" }).then(() => {
-                    setUser(null);
-                    showDemo();
-                  })
-                : openAuth()
-            }
-          >
-            <span className="avatar">
-              {user ? user.name.slice(0, 2).toUpperCase() : "IF"}
-            </span>
-            <span>
-              {user?.name || "Guest analyst"}
-              <small>{user ? "Sign out" : "Sign in to your workspace"}</small>
-            </span>
-            {user ? <LogOut size={15} /> : <LogIn size={15} />}
-          </button>
+          <div>
+            <div style={{ fontSize: "15px", fontWeight: "700", letterSpacing: "1px", color: "#f8fafc" }}>SENTINEL</div>
+            <small style={{ color: "#79dfb8", letterSpacing: "1.5px", fontSize: "9px" }}>SOC ANALYST CORE</small>
+          </div>
+        </div>
+
+        <div className="workspace-label" style={{ fontSize: "10px", letterSpacing: "1.5px", color: "#64748b", margin: "0 12px 8px", fontWeight: 700 }}>
+          INVESTIGATION SUITE
+        </div>
+
+        <nav style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  padding: "9px 12px",
+                  borderRadius: "6px",
+                  background: isActive ? "#16202c" : "transparent",
+                  color: isActive ? "#79dfb8" : "#94a3b8",
+                  borderLeft: isActive ? "3px solid #79dfb8" : "3px solid transparent",
+                  textAlign: "left",
+                  fontSize: "12.5px",
+                  fontWeight: isActive ? 600 : 400,
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <Icon size={16} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div style={{ marginTop: "auto", padding: "16px 12px", borderTop: "1px solid #1e293b" }}>
+          {user ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#0d2b26", color: "#79dfb8", display: "grid", placeItems: "center", fontSize: "11px", fontWeight: "bold" }}>
+                  {user.name.charAt(0)}
+                </div>
+                <div style={{ overflow: "hidden" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 600, color: "#f8fafc", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{user.name}</div>
+                  <div style={{ fontSize: "10px", color: "#79dfb8" }}>{user.role}</div>
+                </div>
+              </div>
+              <button
+                className="button small"
+                onClick={handleLogout}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", width: "100%", marginTop: "4px" }}
+              >
+                <LogOut size={13} /> Sign out
+              </button>
+            </div>
+          ) : (
+            <button
+              className="button primary small"
+              onClick={() => setIsAuthModalOpen(true)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", width: "100%" }}
+            >
+              <UserCheck size={14} /> Analyst Sign In
+            </button>
+          )}
         </div>
       </aside>
-      <div className="main-shell">
-        <header className="topbar">
-          <div className="breadcrumbs">
-            Workspace <ChevronRight size={13} />
-            <span>{page}</span>
+
+      {/* Main Content Area */}
+      <main style={{ flex: 1, padding: "24px 32px", overflowY: "auto", maxWidth: "1500px", margin: "0 auto", width: "100%" }}>
+        {/* Top Header Strip */}
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px", borderBottom: "1px solid #1e293b", paddingBottom: "16px" }}>
+          <div>
+            <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#f8fafc", display: "flex", alignItems: "center", gap: "10px" }}>
+              {NAV_ITEMS.find((n) => n.id === activeTab)?.label}
+            </h1>
+            <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
+              AI-Powered Bitcoin Transaction Traffic Monitoring & Analysis (SIH-2026 Engine)
+            </p>
           </div>
-          <div className="top-actions">
-            <span className="environment">
-              <span className="live-dot" />
-              {demo ? "DEMO MODE" : "CONNECTED"}
-            </span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <button
-              className="icon-button"
-              aria-label="Open alerts"
-              onClick={() => navigate("Alert queue")}
+              className="button"
+              onClick={handleSyncIngestion}
+              disabled={syncingBitcoin}
+              style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
             >
-              <Bell size={18} />
-              <i />
+              <RefreshCw size={13} className={syncingBitcoin ? "spinner" : ""} />
+              {syncingBitcoin ? "Ingesting..." : "Sync Live Bitcoin"}
             </button>
-            {!user && (
-              <button className="button small" onClick={() => openAuth()}>
-                Sign in <ArrowUpRight size={14} />
-              </button>
-            )}
+            <button
+              className="button primary"
+              onClick={() => setIsNewCaseModalOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
+            >
+              <Plus size={14} /> New Case
+            </button>
           </div>
         </header>
-        <main key={page} className="page-motion">
-          <div
-            className={`route-progress ${loading || busy ? "visible" : ""}`}
-            role="progressbar"
-            aria-label="Loading workspace data"
-            aria-hidden={!(loading || busy)}
-          >
-            <span />
-          </div>
-          <div className="page-heading">
-            <div>
-              <div className="eyebrow">
-                SENTINEL TOOL /{" "}
-                {page === "Overview" ? "COMMAND CENTER" : "INVESTIGATION"}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 1: DASHBOARD */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "dashboard" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+            {/* KPI Metric Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <small style={{ color: "#94a3b8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>Total Ingested TXs</small>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#f8fafc", margin: "6px 0" }}>
+                  {dashboardData?.kpis.monitored_transactions.toLocaleString() ?? "..."}
+                </div>
+                <div style={{ fontSize: "11px", color: "#79dfb8", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <Activity size={12} /> Active Blockstream Sync
+                </div>
               </div>
-              <h1>{page === "Overview" ? "Follow the signals." : page}</h1>
-              <p>
-                {page === "Overview"
-                  ? "Turn transaction activity into evidence you can investigate."
-                  : page === "Datasets"
-                    ? "Bring your evidence together. Preserve every source."
-                    : page === "Investigation timeline"
-                      ? "Follow observations, detection stages, and analyst actions in chronological order."
-                      : page === "Graph explorer"
-                        ? "Trace observed output relationships. Ownership remains unknown."
-                        : page === "Team & access"
-                          ? "Give the right people access to the right investigation."
-                          : page === "Transactions"
-                            ? "Search and inspect the transaction records in this case."
-                            : "Prioritize unusual activity. Review the evidence behind every signal."}
-              </p>
-            </div>
-            <div className="heading-actions">
-              <button
-                className="button"
-                disabled={!demo && !current.id}
-                onClick={report}
-              >
-                <ArrowDownToLine size={15} />
-                Export report
-              </button>
-              <button
-                className="button primary"
-                onClick={() => navigate("Datasets")}
-              >
-                <Plus size={16} />
-                Import dataset
-              </button>
-            </div>
-          </div>
-          {demo && (
-            <div className="demo-banner">
-              <span>
-                <Info size={15} />
-                <strong>Training workspace</strong> You’re exploring synthetic
-                data. Scores are illustrative, not live model results.
-              </span>
-              <button onClick={() => (user ? loadCases() : openAuth())}>
-                Open my workspace <ArrowRight size={14} />
-              </button>
-            </div>
-          )}
-          {error && (
-            <div className="error-banner" role="alert">
-              <AlertTriangle size={17} />
-              {error}
-              <button aria-label="Dismiss error" onClick={() => setError("")}>
-                <X size={16} />
-              </button>
-            </div>
-          )}
-          <div className="case-bar">
-            <div className="case-select">
-              <FolderOpen size={16} />
-              <select
-                aria-label="Select investigation case"
-                value={current.id}
-                onChange={(e) =>
-                  setCurrent(cases.find((c) => c.id === e.target.value)!)
-                }
-              >
-                {cases.length ? (
-                  cases.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">No cases yet</option>
-                )}
-              </select>
-              <ChevronDown size={13} />
-            </div>
-            <span className="case-desc">{current.description}</span>
-            <div className="case-actions">
-              {!demo && user?.role !== "viewer" && (
-                <button className="text-button" onClick={() => setCreate(true)}>
-                  <Plus size={14} />
-                  New case
-                </button>
-              )}
-              <button
-                className="icon-button"
-                aria-label="Refresh data"
-                onClick={() =>
-                  demo
-                    ? setNotice("Demo data is a fixed synthetic snapshot.")
-                    : refresh()
-                }
-              >
-                <RefreshCw size={15} className={loading ? "spin" : ""} />
-              </button>
-              <span className="small-label">
-                {demo
-                  ? "Reference snapshot"
-                  : loading
-                    ? "Loading…"
-                    : "Case overview"}
-              </span>
-            </div>
-          </div>
-          {page === "Overview" && (
-            <>
-              <div className="stats-grid">
-                {[
-                  {
-                    label: "Transactions analyzed",
-                    value: summary.transactions.toLocaleString(),
-                    detail: "Across imported datasets",
-                    icon: Activity,
-                  },
-                  {
-                    label: "Output value observed",
-                    value: btc(summary.total_output_sats),
-                    suffix: "BTC",
-                    detail: "Includes change · not net flow",
-                    icon: Database,
-                  },
-                  {
-                    label: "Signals detected",
-                    value: summary.alerts_count,
-                    detail: "Unusual patterns for review",
-                    icon: ShieldCheck,
-                  },
-                  {
-                    label: "High-priority signals",
-                    value: summary.high_priority,
-                    detail: "Evidence requires analyst review",
-                    icon: AlertTriangle,
-                  },
-                ].map((s, i) => (
-                  <section className={`stat-card stat-${i}`} key={s.label}>
-                    <div className="stat-label">
-                      {s.label}
-                      <s.icon size={16} />
-                    </div>
-                    <div className="stat-value">
-                      {s.value}
-                      <small>{s.suffix}</small>
-                    </div>
-                    <span className="stat-detail">
-                      {i === 3 && <i className="amber-dot" />}
-                      {s.detail}
-                    </span>
-                  </section>
-                ))}
+
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <small style={{ color: "#94a3b8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>Active Alerts</small>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#e8b36a", margin: "6px 0" }}>
+                  {dashboardData?.kpis.active_alerts.toLocaleString() ?? "..."}
+                </div>
+                <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  {dashboardData?.alert_severity_distribution.HIGH ?? 0} High / {dashboardData?.alert_severity_distribution.CRITICAL ?? 0} Critical
+                </div>
               </div>
-              <div className="overview-grid">
-                <section className="panel activity-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>Transaction activity</h2>
-                      <p>Observation or block time · missing dates excluded</p>
-                    </div>
-                    <span className="chip">
-                      {demo ? "24 hours" : "Imported period"} · UTC
-                    </span>
-                  </div>
-                  <div className="chart-legend">
-                    <span className="key-dot mint" />
-                    Transactions{" "}
-                    <span className="chart-note">
-                      {summary.transactions.toLocaleString()} records
-                    </span>
-                  </div>
-                  <div className="activity-chart">
-                    <div className="chart-grid">
-                      <span>Activity</span>
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                    </div>
-                    <div className="bars">
-                      {summary.chart.map((p, i) => (
-                        <div
-                          className="bar-slot"
-                          key={i}
-                          title={`${p.label}: ${p.count} transactions`}
+
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <small style={{ color: "#94a3b8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>High Risk TXs</small>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#f87171", margin: "6px 0" }}>
+                  {dashboardData?.kpis.high_risk_transactions.toLocaleString() ?? "..."}
+                </div>
+                <div style={{ fontSize: "11px", color: "#f87171" }}>
+                  Score ≥ 70 / 100
+                </div>
+              </div>
+
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <small style={{ color: "#94a3b8", fontSize: "11px", textTransform: "uppercase", letterSpacing: "1px" }}>Open Investigations</small>
+                <div style={{ fontSize: "24px", fontWeight: 700, color: "#38bdf8", margin: "6px 0" }}>
+                  {dashboardData?.kpis.open_cases.toLocaleString() ?? "..."}
+                </div>
+                <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  SOC Analyst Managed
+                </div>
+              </div>
+            </div>
+
+            {/* Ingestion Status Banner */}
+            {dashboardData?.ingestion_status && (
+              <div style={{ padding: "12px 16px", background: "#0d1b18", border: "1px solid #174238", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#79dfb8", boxShadow: "0 0 8px #79dfb8" }} />
+                  <span style={{ fontSize: "12px", color: "#79dfb8", fontWeight: 600 }}>Esplora Ingestion Pipeline Connected</span>
+                  <span style={{ fontSize: "12px", color: "#94a3b8" }}>| Latest Block: #{dashboardData.ingestion_status.latest_block}</span>
+                  <span style={{ fontSize: "12px", color: "#64748b" }}>({short(dashboardData.ingestion_status.block_hash, 6)})</span>
+                </div>
+                <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  Last synced: {timeAgo(dashboardData.ingestion_status.last_sync)}
+                </div>
+              </div>
+            )}
+
+            {/* Traffic Volume & Risk Charts */}
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc", marginBottom: "12px" }}>
+                  Bitcoin Ingestion Volume & Transaction Traffic
+                </h3>
+                <div style={{ height: "240px", width: "100%" }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dashboardData?.traffic_series || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="txColor" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#79dfb8" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#79dfb8" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="hour_bucket" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} />
+                      <Tooltip contentStyle={{ background: "#0c1016", borderColor: "#334155", fontSize: "11px" }} />
+                      <Area type="monotone" dataKey="tx_count" stroke="#79dfb8" fillOpacity={1} fill="url(#txColor)" name="TX Count" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc", marginBottom: "12px" }}>
+                  Risk Classification Distribution
+                </h3>
+                <div style={{ height: "240px", width: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {dashboardData && (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: "LOW", value: dashboardData.risk_distribution.LOW || 1, color: "#38bdf8" },
+                            { name: "MEDIUM", value: dashboardData.risk_distribution.MEDIUM || 0, color: "#e8b36a" },
+                            { name: "HIGH", value: dashboardData.risk_distribution.HIGH || 0, color: "#fb923c" },
+                            { name: "CRITICAL", value: dashboardData.risk_distribution.CRITICAL || 0, color: "#f87171" },
+                          ]}
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={4}
+                          dataKey="value"
                         >
-                          <div
-                            style={{
-                              height: `${Math.max(3, (p.count / Math.max(1, ...summary.chart.map((x) => x.count))) * 100)}%`,
-                            }}
-                          />
-                          <span>
-                            {i %
-                              Math.max(
-                                1,
-                                Math.floor(summary.chart.length / 6),
-                              ) ===
-                            0
-                              ? p.label
-                              : ""}
-                          </span>
+                          {["#38bdf8", "#e8b36a", "#fb923c", "#f87171"].map((c, i) => (
+                            <Cell key={`cell-${i}`} fill={c} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ background: "#0c1016", borderColor: "#334155", fontSize: "11px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Panels (Recent Alerts + Recent Cases) */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc" }}>Recent Triaged Alerts</h3>
+                  <button className="button small" onClick={() => setActiveTab("alerts")}>View All Alerts</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {(dashboardData?.recent_alerts || []).slice(0, 4).map((a) => (
+                    <div
+                      key={a.id}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "#0a0f16", border: "1px solid #1e293b", borderRadius: "6px", cursor: "pointer" }}
+                      onClick={() => {
+                        setSelectedAlert(a);
+                        setActiveTab("alerts");
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#f8fafc" }}>{a.title}</div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontFamily: "monospace" }}>TX: {short(a.txid, 6)}</div>
+                      </div>
+                      <span className={`badge ${a.severity.toLowerCase()}`}>{a.severity}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc" }}>Active Cases</h3>
+                  <button className="button small" onClick={() => setActiveTab("cases")}>Open Cases</button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {(dashboardData?.recent_cases || []).slice(0, 4).map((c) => (
+                    <div
+                      key={c.id}
+                      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", background: "#0a0f16", border: "1px solid #1e293b", borderRadius: "6px", cursor: "pointer" }}
+                      onClick={() => {
+                        loadCaseDetail(c.id);
+                        setActiveTab("cases");
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "#f8fafc" }}>{c.title}</div>
+                        <div style={{ fontSize: "11px", color: "#64748b" }}>Status: {c.status} · {timeAgo(c.created_at)}</div>
+                      </div>
+                      <span className={`badge ${c.priority.toLowerCase()}`}>{c.priority}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 2: TRANSACTIONS EXPLORER */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "transactions" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Filter Bar */}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", background: "#11171f", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e293b" }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                <input
+                  type="text"
+                  placeholder="Search by TXID or Address hash..."
+                  value={txSearch}
+                  onChange={(e) => setTxSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && loadTransactions()}
+                  style={{ width: "100%", padding: "7px 10px 7px 32px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+                />
+              </div>
+
+              <select
+                value={txRiskFilter}
+                onChange={(e) => setTxRiskFilter(e.target.value)}
+                style={{ padding: "7px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+              >
+                <option value="">All Risk Levels</option>
+                <option value="LOW">Low Risk</option>
+                <option value="MEDIUM">Medium Risk</option>
+                <option value="HIGH">High Risk</option>
+                <option value="CRITICAL">Critical Risk</option>
+              </select>
+
+              <button className="button small" onClick={loadTransactions}>
+                <Filter size={13} /> Filter
+              </button>
+            </div>
+
+            {/* Transactions Table & Detail Drawer */}
+            <div style={{ display: "grid", gridTemplateColumns: selectedTx ? "1.4fr 1fr" : "1fr", gap: "16px" }}>
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "12px", color: "#94a3b8" }}>
+                  <span>Showing {transactions.length} of {totalTxCount} transactions</span>
+                  <span>Click a row to inspect UTXO forensics</span>
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #1e293b", textAlign: "left", color: "#64748b" }}>
+                        <th style={{ padding: "8px 6px" }}>TXID</th>
+                        <th style={{ padding: "8px 6px" }}>Total Output (BTC)</th>
+                        <th style={{ padding: "8px 6px" }}>In / Out</th>
+                        <th style={{ padding: "8px 6px" }}>Fee Rate</th>
+                        <th style={{ padding: "8px 6px" }}>Risk Score</th>
+                        <th style={{ padding: "8px 6px" }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.map((tx) => (
+                        <tr
+                          key={tx.txid}
+                          onClick={() => setSelectedTx(tx)}
+                          style={{
+                            borderBottom: "1px solid #16202c",
+                            cursor: "pointer",
+                            background: selectedTx?.txid === tx.txid ? "#16222f" : "transparent",
+                          }}
+                        >
+                          <td style={{ padding: "10px 6px", fontFamily: "monospace", color: "#79dfb8" }}>
+                            {short(tx.txid, 6)}
+                          </td>
+                          <td style={{ padding: "10px 6px", color: "#f8fafc" }}>{btc(tx.total_output_sats)} BTC</td>
+                          <td style={{ padding: "10px 6px", color: "#94a3b8" }}>{tx.input_count} → {tx.output_count}</td>
+                          <td style={{ padding: "10px 6px", color: "#94a3b8" }}>{tx.fee_rate?.toFixed(1) || "1.0"} sat/vB</td>
+                          <td style={{ padding: "10px 6px" }}>
+                            <span className={`badge ${tx.risk_level.toLowerCase()}`}>
+                              {tx.risk_score} ({tx.risk_level})
+                            </span>
+                          </td>
+                          <td style={{ padding: "10px 6px" }}>
+                            {tx.is_flagged ? (
+                              <span style={{ color: "#f87171", fontSize: "11px", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <AlertTriangle size={12} /> Flagged
+                              </span>
+                            ) : (
+                              <span style={{ color: "#79dfb8", fontSize: "11px" }}>Normal</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Transaction Detail Panel */}
+              {selectedTx && (
+                <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px", height: "fit-content" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "12px", marginBottom: "12px" }}>
+                    <div>
+                      <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc" }}>Transaction Forensics</h3>
+                      <div style={{ fontSize: "10px", color: "#79dfb8", fontFamily: "monospace" }}>{selectedTx.txid}</div>
+                    </div>
+                    <button className="button small" onClick={() => setSelectedTx(null)}>✕</button>
+                  </div>
+
+                  {/* Actions Strip */}
+                  <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+                    <button className="button primary small" onClick={() => jumpToGraph(selectedTx.txid)}>
+                      <GitBranch size={13} /> Graph Explorer
+                    </button>
+                    <button className="button small" onClick={() => jumpToAI(selectedTx.txid, `Analyze transaction ${selectedTx.txid} for structural anomalies and peeling patterns.`)}>
+                      <Bot size={13} /> Ask AI Analyst
+                    </button>
+                  </div>
+
+                  {/* Risk Breakdown */}
+                  <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b", marginBottom: "14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                      <span style={{ fontSize: "11px", color: "#94a3b8" }}>Risk Assessment</span>
+                      <span className={`badge ${selectedTx.risk_level.toLowerCase()}`}>{selectedTx.risk_level} ({selectedTx.risk_score}/100)</span>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                      ML Anomaly Score: <b>{selectedTx.anomaly_score}</b> (Isolation Forest)
+                    </div>
+                  </div>
+
+                  {/* Inputs & Outputs List */}
+                  <div style={{ marginBottom: "12px" }}>
+                    <small style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", fontSize: "10px" }}>Inputs ({selectedTx.inputs?.length || 0})</small>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px" }}>
+                      {(selectedTx.inputs || []).map((inp, idx) => (
+                        <div key={idx} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", padding: "6px", background: "#0a0f16", borderRadius: "4px" }}>
+                          <span style={{ fontFamily: "monospace", color: "#38bdf8" }}>{short(inp.address || "Unparsed", 8)}</span>
+                          <span>{btc(inp.value_sats)} BTC</span>
                         </div>
                       ))}
                     </div>
-                    {!summary.chart.length && (
-                      <div className="chart-empty">
-                        Import data to see transaction activity.
-                      </div>
-                    )}
                   </div>
-                </section>
-                <section className="panel posture-panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>Review priorities</h2>
-                      <p>A starting point, not a verdict</p>
-                    </div>
-                    <ShieldCheck size={18} />
-                  </div>
-                  <div className="priority-total">
-                    <strong>
-                      {alerts.filter((a) => a.status === "open").length}
-                    </strong>
-                    <span>
-                      signals awaiting
-                      <br />
-                      analyst review
-                    </span>
-                    <div className="priority-ring">
-                      <Shield size={27} />
+
+                  <div>
+                    <small style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", fontSize: "10px" }}>Outputs ({selectedTx.outputs?.length || 0})</small>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px" }}>
+                      {(selectedTx.outputs || []).map((out, idx) => (
+                        <div key={idx} style={{ fontSize: "11px", display: "flex", justifyContent: "space-between", padding: "6px", background: "#0a0f16", borderRadius: "4px" }}>
+                          <span style={{ fontFamily: "monospace", color: "#79dfb8" }}>{short(out.address || "OP_RETURN", 8)}</span>
+                          <span>{btc(out.value_sats)} BTC</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="priority-line">
-                    <span>
-                      <i className="key-dot amber" />
-                      High priority
-                    </span>
-                    <strong>
-                      {alerts.filter((a) => a.severity === "high").length}
-                    </strong>
-                  </div>
-                  <div className="priority-line">
-                    <span>
-                      <i className="key-dot mint" />
-                      Other signals
-                    </span>
-                    <strong>
-                      {alerts.filter((a) => a.severity !== "high").length}
-                    </strong>
-                  </div>
-                  <button
-                    className="button full"
-                    onClick={() => navigate("Alert queue")}
-                  >
-                    Review alert queue <ArrowRight size={15} />
-                  </button>
-                </section>
-              </div>
-              <div className="overview-bottom">
-                <section className="panel">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>
-                        Signals worth a closer look{" "}
-                        <span className="count-bubble">{alerts.length}</span>
-                      </h2>
-                      <p>Ranked by review priority</p>
-                    </div>
-                    <button
-                      className="text-button"
-                      onClick={() => navigate("Alert queue")}
-                    >
-                      View all <ArrowUpRight size={14} />
-                    </button>
-                  </div>
-                  {alertTable(alerts.slice(0, 4))}
-                </section>
-                <section className="panel graph-preview">
-                  <div className="panel-heading">
-                    <div>
-                      <h2>Follow the transaction trail</h2>
-                      <p>Selected signal · two-hop neighborhood</p>
-                    </div>
-                    <button
-                      className="icon-button"
-                      aria-label="Open graph explorer"
-                      onClick={() => navigate("Graph explorer")}
-                    >
-                      <ArrowUpRight size={17} />
-                    </button>
-                  </div>
-                  {graphTx ? (
-                    <Graph txid={graphTx} caseId={current.id} demo={demo} />
-                  ) : (
-                    <div className="empty">
-                      <Network />
-                      <p>Import transactions to build a graph.</p>
-                    </div>
-                  )}
-                  <div className="graph-footer">
-                    <span className="mono">
-                      {graphTx ? short(graphTx, 9) : "No transaction selected"}
-                    </span>
-                    <button
-                      className="text-button"
-                      onClick={() => navigate("Graph explorer")}
-                    >
-                      Explore <ArrowRight size={13} />
-                    </button>
-                  </div>
-                </section>
-              </div>
-            </>
-          )}
-          {(page === "Alert queue" || page === "Transactions") && (
-            <RecordsView
-              key={`${page}:${current.id}:${demo}`}
-              mode={page === "Transactions" ? "transactions" : "alerts"}
-              caseId={current.id}
-              demo={demo}
-              datasets={datasets}
-              alerts={alerts}
-              onTx={setTxDetail}
-              onAlert={setSelected}
-            />
-          )}
-          {page === "Investigation timeline" && (
-            <Timeline
-              key={`${current.id}:${demo}`}
-              caseId={current.id}
-              demo={demo}
-              datasets={datasets}
-              alerts={alerts}
-              onTx={(id) => setTxDetail({ txid: id })}
-              onAlert={async (id) => {
-                const existing = alerts.find((a) => a.id === id);
-                if (existing) setSelected(existing);
-                else
-                  try {
-                    setSelected(
-                      await api(`/cases/${current.id}/alert-details/${id}`),
-                    );
-                  } catch (e) {
-                    setError((e as Error).message);
-                  }
-              }}
-            />
-          )}
-          {page === "Graph explorer" && (
-            <section className="panel large-graph">
-              <div className="toolbar">
-                <form
-                  className="graph-search"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    setGraphTx(String(f.get("txid")));
-                  }}
-                >
-                  <Search size={17} />
-                  <input
-                    name="txid"
-                    aria-label="Transaction ID"
-                    placeholder="Enter an exact transaction ID"
-                    defaultValue={graphTx}
-                    key={current.id}
-                  />
-                  <button className="button small" type="submit">
-                    Trace transaction <ArrowRight size={14} />
-                  </button>
-                </form>
-              </div>
-              {graphTx ? (
-                <Graph
-                  txid={graphTx}
-                  caseId={current.id}
-                  demo={demo}
-                  onSelect={(id) => {
-                    setTxDetail({ txid: id });
-                  }}
-                />
-              ) : (
-                <div className="empty">
-                  <Network />
-                  <p>
-                    Select or import a transaction to explore its neighborhood.
-                  </p>
                 </div>
               )}
-              <div className="table-footer">
-                Edges represent outputs created and spent. Addresses and
-                transaction relationships do not establish wallet ownership.
-              </div>
-            </section>
-          )}
-          {page === "Datasets" && (
-            <>
-              <div className="import-grid">
-                <section className="panel upload-panel">
-                  <Upload size={30} />
-                  <h2>Start with your evidence</h2>
-                  <p>
-                    Import CSV, JSON, or XML transaction records.
-                    <br />
-                    Files are validated before analysis. Maximum 4 MB on Vercel
-                    or 10 MB when self-hosted.
-                  </p>
-                  <label
-                    className={`button primary ${!canWrite ? "disabled" : ""}`}
-                  >
-                    <Plus size={16} />
-                    {busy ? "Processing…" : "Choose a dataset"}
-                    <input
-                      type="file"
-                      accept=".csv,.json,.xml"
-                      hidden
-                      disabled={!canWrite || busy}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void upload(file);
-                        e.target.value = "";
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 3: ALERT QUEUE */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "alerts" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Filter controls */}
+            <div style={{ display: "flex", gap: "10px", background: "#11171f", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e293b" }}>
+              <select
+                value={alertSeverityFilter}
+                onChange={(e) => setAlertSeverityFilter(e.target.value)}
+                style={{ padding: "7px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+              >
+                <option value="">All Severities</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+
+              <select
+                value={alertStatusFilter}
+                onChange={(e) => setAlertStatusFilter(e.target.value)}
+                style={{ padding: "7px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+              >
+                <option value="">All Statuses</option>
+                <option value="NEW">New</option>
+                <option value="UNDER_REVIEW">Under Review</option>
+                <option value="ESCALATED">Escalated</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="FALSE_POSITIVE">False Positive</option>
+              </select>
+            </div>
+
+            {/* Alert List & Triage Inspector */}
+            <div style={{ display: "grid", gridTemplateColumns: selectedAlert ? "1.2fr 1fr" : "1fr", gap: "16px" }}>
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {alerts.map((al) => (
+                    <div
+                      key={al.id}
+                      onClick={() => setSelectedAlert(al)}
+                      style={{
+                        padding: "12px 14px",
+                        background: selectedAlert?.id === al.id ? "#16202c" : "#0a0f16",
+                        border: "1px solid #1e293b",
+                        borderLeft: `4px solid ${SEVERITY_COLORS[al.severity] || "#38bdf8"}`,
+                        borderRadius: "6px",
+                        cursor: "pointer",
                       }}
-                    />
-                  </label>
-                  {demo && (
-                    <button
-                      className="text-button"
-                      onClick={() => openAuth()}
                     >
-                      Sign in to upload your data <ArrowRight size={14} />
-                    </button>
-                  )}
-                  {!demo && !current.id && (
-                    <button
-                      className="text-button"
-                      onClick={() => setCreate(true)}
-                    >
-                      Create a case first
-                    </button>
-                  )}
-                </section>
-                <section className="panel import-guide">
-                  <span className="eyebrow">REPRODUCIBLE BY DESIGN</span>
-                  <h2>Every signal has a source.</h2>
-                  <p>
-                    Imports retain the file hash and record number. Analysis
-                    records its model version and reasons.
-                  </p>
-                  <div>
-                    <CheckCircle2 size={16} /> Read-only source processing
-                  </div>
-                  <div>
-                    <CheckCircle2 size={16} /> Duplicate and schema validation
-                  </div>
-                  <div>
-                    <CheckCircle2 size={16} /> Isolated case access
-                  </div>
-                  <div className="guide-actions">
-                    <button
-                      className="button small"
-                      onClick={() =>
-                        download(
-                          { transactions: demoTx.slice(0, 50) },
-                          "sentinel-example.json",
-                        )
-                      }
-                    >
-                      <ArrowDownToLine size={14} />
-                      Sample JSON
-                    </button>
-                    <button
-                      className="button small"
-                      disabled={!canWrite || busy}
-                      onClick={seedDemo}
-                    >
-                      Load training data
-                    </button>
-                  </div>
-                </section>
-              </div>
-              <section className="panel">
-                <div className="panel-heading">
-                  <div>
-                    <h2>Imported datasets</h2>
-                    <p>{datasets.length} sources in this investigation</p>
-                  </div>
-                  <Database size={18} />
-                </div>
-                <div className="dataset-list">
-                  {datasets.map((d) => (
-                    <div className="dataset-row" key={d.id}>
-                      <span className="file-icon">
-                        <FileText size={21} />
-                      </span>
-                      <div className="dataset-info">
-                        <strong>{d.name}</strong>
-                        <span>
-                          {d.count} records · {date(d.created_at)}
-                        </span>
-                        {d.sha256 && (
-                          <small className="mono">
-                            SHA-256 {short(d.sha256, 12)}
-                          </small>
-                        )}
-                        {d.error && <small className="danger">{d.error}</small>}
-                        {d.warnings?.map((w) => (
-                          <small key={w}>{w}</small>
-                        ))}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+                        <div style={{ fontWeight: 600, fontSize: "13px", color: "#f8fafc" }}>{al.title}</div>
+                        <span className={`badge ${al.severity.toLowerCase()}`}>{al.severity}</span>
                       </div>
-                      <Badge value={d.status} />
-                      {["queued", "running"].includes(d.status) && (
-                        <span>{d.progress || 0}%</span>
-                      )}
+                      <p style={{ fontSize: "11.5px", color: "#94a3b8", margin: "4px 0" }}>{al.reason}</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10.5px", color: "#64748b", marginTop: "8px" }}>
+                        <span style={{ fontFamily: "monospace" }}>TX: {short(al.txid, 8)}</span>
+                        <span>Status: <b style={{ color: "#79dfb8" }}>{al.status}</b> · {timeAgo(al.created_at)}</span>
+                      </div>
                     </div>
                   ))}
-                  {!datasets.length && (
-                    <div className="empty">
-                      <Database />
-                      <p>
-                        No datasets yet. Import a file or load synthetic
-                        training data.
-                      </p>
-                    </div>
-                  )}
                 </div>
-              </section>
-            </>
-          )}
-          {page === "Team & access" && (
-            <section className="panel team-panel">
-              <div className="panel-heading">
-                <div>
-                  <h2>Case members</h2>
-                  <p>
-                    Access is enforced by the backend on every case operation.
-                  </p>
-                </div>
-                <Users size={20} />
               </div>
-              {demo ? (
-                <div className="empty">
-                  <Shield />
-                  <h3>A private space for your team</h3>
-                  <p>
-                    Sign in to create cases and assign analyst or viewer access.
-                  </p>
-                  <button
-                    className="button primary"
-                    onClick={() => openAuth()}
-                  >
-                    Sign in <ArrowRight size={15} />
-                  </button>
+
+              {/* Alert Triage Drawer */}
+              {selectedAlert && (
+                <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px", height: "fit-content" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #1e293b", paddingBottom: "10px", marginBottom: "12px" }}>
+                    <div>
+                      <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>{selectedAlert.title}</h3>
+                      <small style={{ color: "#64748b" }}>Alert ID: {selectedAlert.id}</small>
+                    </div>
+                    <button className="button small" onClick={() => setSelectedAlert(null)}>✕</button>
+                  </div>
+
+                  <div style={{ fontSize: "12px", color: "#cbd5e1", marginBottom: "14px", lineHeight: 1.6 }}>
+                    {selectedAlert.reason}
+                  </div>
+
+                  {/* Heuristic Signals & Evidence */}
+                  <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b", marginBottom: "16px" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#79dfb8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                      Detection Signals
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "11px" }}>
+                      <div><b>Detection Method:</b> {selectedAlert.detection_method}</div>
+                      <div><b>Risk Score:</b> {selectedAlert.risk_score} / 100</div>
+                      <div><b>Anomaly Score:</b> {selectedAlert.anomaly_score} / 100</div>
+                      <div style={{ wordBreak: "break-all", fontFamily: "monospace", color: "#94a3b8" }}>
+                        TX: {selectedAlert.txid}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Status Transition Buttons */}
+                  <div style={{ marginBottom: "16px" }}>
+                    <small style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", fontSize: "10px" }}>Change Alert Triage Status</small>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px" }}>
+                      <button className="button small" onClick={() => handleUpdateAlertStatus(selectedAlert.id, "UNDER_REVIEW")}>Under Review</button>
+                      <button className="button small" onClick={() => handleUpdateAlertStatus(selectedAlert.id, "ESCALATED")}>Escalate</button>
+                      <button className="button small" onClick={() => handleUpdateAlertStatus(selectedAlert.id, "RESOLVED")}>Resolve</button>
+                      <button className="button small" onClick={() => handleUpdateAlertStatus(selectedAlert.id, "FALSE_POSITIVE")}>False Positive</button>
+                    </div>
+                  </div>
+
+                  {/* Action Shortcuts */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <button className="button primary" onClick={() => jumpToGraph(selectedAlert.txid)}>
+                      <GitBranch size={14} /> Open in Graph Explorer
+                    </button>
+                    <button className="button" onClick={() => jumpToAI(selectedAlert.txid, `Why was alert "${selectedAlert.title}" flagged for transaction ${selectedAlert.txid}?`)}>
+                      <Bot size={14} /> AI Deep-Dive Analysis
+                    </button>
+                  </div>
                 </div>
-              ) : (
-                <>
-                  <div className="dataset-list">
-                    {members.map((m) => (
-                      <div className="dataset-row" key={m.id}>
-                        <span className="avatar">{m.name.slice(0, 2)}</span>
-                        <div className="dataset-info">
-                          <strong>{m.name}</strong>
-                          <span>{m.email}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 4: INVESTIGATION CASES */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "cases" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "16px" }}>
+            {/* Case List */}
+            <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc" }}>Active Investigation Cases</h3>
+                <button className="button primary small" onClick={() => setIsNewCaseModalOpen(true)}>
+                  <Plus size={12} /> New
+                </button>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {cases.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => loadCaseDetail(c.id)}
+                    style={{
+                      padding: "12px",
+                      background: selectedCase?.id === c.id ? "#16202c" : "#0a0f16",
+                      border: "1px solid #1e293b",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+                      <div style={{ fontWeight: 600, fontSize: "12.5px", color: "#f8fafc" }}>{c.title}</div>
+                      <span className={`badge ${c.priority.toLowerCase()}`}>{c.priority}</span>
+                    </div>
+                    <p style={{ fontSize: "11px", color: "#94a3b8", margin: "4px 0" }}>{c.description || "No description provided."}</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#64748b", marginTop: "6px" }}>
+                      <span>Status: <b style={{ color: "#79dfb8" }}>{c.status}</b></span>
+                      <span>{c.transaction_count || 0} TXs attached</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Case Details Board */}
+            {selectedCase ? (
+              <div className="panel" style={{ padding: "20px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "1px solid #1e293b", paddingBottom: "16px", marginBottom: "16px" }}>
+                  <div>
+                    <h2 style={{ fontSize: "16px", fontWeight: 700, color: "#f8fafc" }}>{selectedCase.title}</h2>
+                    <p style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px" }}>{selectedCase.description}</p>
+                    <div style={{ fontSize: "11px", color: "#64748b", marginTop: "6px" }}>
+                      Lead: <b>{selectedCase.lead_investigator_name || "Unassigned"}</b> · Created: {timeAgo(selectedCase.created_at)}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button className="button small" onClick={() => {
+                      setReportCaseId(selectedCase.id);
+                      handleGenerateReport(selectedCase.id);
+                      setActiveTab("reports");
+                    }}>
+                      <FileCheck size={13} /> Compile Report
+                    </button>
+                  </div>
+                </div>
+
+                {/* Attached Transactions */}
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ fontSize: "12px", fontWeight: 600, color: "#79dfb8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                    Attached Subject Transactions ({selectedCase.transactions?.length || 0})
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {(selectedCase.transactions || []).map((tx) => (
+                      <div key={tx.txid} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "#0a0f16", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                        <div>
+                          <span style={{ fontFamily: "monospace", color: "#79dfb8", fontSize: "11.5px" }}>{short(tx.txid, 8)}</span>
+                          <span style={{ marginLeft: "12px", color: "#f8fafc", fontSize: "11.5px" }}>{btc(tx.total_output_sats)} BTC</span>
                         </div>
-                        <Badge value={m.case_role} />
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button className="button small" onClick={() => jumpToGraph(tx.txid)}>Graph</button>
+                          <button className="button small" onClick={() => jumpToAI(tx.txid, `Analyze attached transaction ${tx.txid} in the context of case ${selectedCase.title}.`)}>AI</button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  {current.member_role === "admin" && (
-                    <form
-                      className="member-form"
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const f = new FormData(e.currentTarget);
-                        try {
-                          await api(`/cases/${current.id}/members`, {
-                            method: "POST",
-                            body: JSON.stringify({
-                              email: f.get("email"),
-                              role: f.get("role"),
-                            }),
-                          });
-                          setMembers(await api(`/cases/${current.id}/members`));
-                          setNotice("Case membership updated.");
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      <h3>Add an existing user to this case</h3>
-                      <label>
-                        Email
-                        <input
-                          name="email"
-                          type="email"
-                          required
-                          placeholder="analyst@your-team.org"
-                        />
-                      </label>
-                      <label>
-                        Case role
-                        <select name="role">
-                          <option value="analyst">
-                            Analyst — import and review
-                          </option>
-                          <option value="viewer">
-                            Viewer — read and export
-                          </option>
-                        </select>
-                      </label>
-                      <button className="button primary">
-                        Grant case access
-                      </button>
-                    </form>
-                  )}
-                  {user?.role === "admin" && (
-                    <form
-                      className="member-form"
-                      onSubmit={async (e) => {
-                        e.preventDefault();
-                        const el = e.currentTarget,
-                          f = new FormData(el);
-                        try {
-                          await api("/users", {
-                            method: "POST",
-                            body: JSON.stringify(Object.fromEntries(f)),
-                          });
-                          el.reset();
-                          setNotice(
-                            "User created. Add them to a case to grant access.",
-                          );
-                        } catch (e) {
-                          setError((e as Error).message);
-                        }
-                      }}
-                    >
-                      <h3>Create a workspace user</h3>
-                      <label>
-                        Name
-                        <input name="name" required minLength={2} />
-                      </label>
-                      <label>
-                        Email
-                        <input name="email" type="email" required />
-                      </label>
-                      <label>
-                        Temporary password
-                        <input
-                          name="password"
-                          type="password"
-                          required
-                          minLength={12}
-                          autoComplete="new-password"
-                        />
-                      </label>
-                      <label>
-                        Workspace role
-                        <select name="role">
-                          <option value="analyst">Analyst</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
-                      </label>
-                      <button className="button primary">Create user</button>
-                    </form>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-          <footer>
-            <span>
-              <ShieldCheck size={13} /> Evidence-led analysis. Human judgment
-              required.
-            </span>
-            <span>
-              SENTINEL TOOL <i /> AI-POWERED BITCOIN INTELLIGENCE
-            </span>
-          </footer>
-        </main>
-      </div>
-      {notice && (
-        <div className="toast" role="status">
-          <Check size={17} />
-          {notice}
-          <button
-            aria-label="Dismiss notification"
-            onClick={() => setNotice("")}
-          >
-            <X size={15} />
-          </button>
-        </div>
-      )}
-      {login && (
-        <div className="modal-overlay" onClick={closeAuth}>
-          <section
-            className="modal auth-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="auth-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="modal-close"
-              aria-label={signup ? "Close signup" : "Close sign in"}
-              onClick={closeAuth}
-            >
-              <X size={20} />
-            </button>
-            <span className="login-mark">
-              <Shield size={28} />
-            </span>
-            <div className="eyebrow">YOUR INVESTIGATION WORKSPACE</div>
-            <h2 id="auth-title">
-              {signup ? "Create your Sentinel Tool account." : "Welcome to Sentinel Tool."}
-            </h2>
-            <p>
-              {signup
-                ? "Start a private workspace for your Bitcoin investigations."
-                : "Sign in to continue to your investigation workspace."}
-            </p>
-            <form onSubmit={signup ? submitSignup : submitLogin}>
-              {signup && (
-                <label>
-                  Full name
-                  <input
-                    autoFocus
-                    name="name"
-                    type="text"
-                    autoComplete="name"
-                    minLength={2}
-                    maxLength={80}
-                    required
-                    placeholder="Your name"
-                  />
-                </label>
-              )}
-              <label>
-                Email address
-                <input
-                  autoFocus={!signup}
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  placeholder="you@example.com"
-                />
-              </label>
-              <label>
-                Password
-                <input
-                  name="password"
-                  type="password"
-                  autoComplete={signup ? "new-password" : "current-password"}
-                  minLength={signup ? 12 : 1}
-                  maxLength={256}
-                  required
-                  placeholder={signup ? "At least 12 characters" : "Enter your password"}
-                />
-              </label>
-              {signup && (
-                <label>
-                  Confirm password
-                  <input
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={12}
-                    maxLength={256}
-                    required
-                    placeholder="Enter the password again"
-                  />
-                </label>
-              )}
-              {error && (
-                <p className="danger" role="alert">
-                  {error}
-                </p>
-              )}
-              <button className="button primary full" disabled={busy}>
-                {busy
-                  ? signup
-                    ? "Creating account…"
-                    : "Signing in…"
-                  : signup
-                    ? "Create account"
-                    : "Sign in securely"}
-                <ArrowRight size={16} />
-              </button>
-            </form>
-            <div className="auth-switch">
-              <span>{signup ? "Already have an account?" : "New to Sentinel Tool?"}</span>
-              <button
-                className="text-button"
-                onClick={() => openAuth(!signup)}
-                disabled={busy}
-              >
-                {signup ? "Sign in" : "Create an account"}
-                <ArrowRight size={14} />
-              </button>
-            </div>
-            <button className="text-button demo-auth-link" onClick={showDemo}>
-              Explore synthetic demo instead <ArrowRight size={14} />
-            </button>
-          </section>
-        </div>
-      )}
-      {create && (
-        <div className="modal-overlay">
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="case-title"
-          >
-            <button
-              className="modal-close"
-              aria-label="Close"
-              onClick={() => setCreate(false)}
-            >
-              <X size={20} />
-            </button>
-            <h2 id="case-title">Open an investigation</h2>
-            <p>A case keeps evidence, alerts, and team access together.</p>
-            <form onSubmit={createCase}>
-              <label>
-                Case name
-                <input
-                  autoFocus
-                  name="name"
-                  required
-                  minLength={3}
-                  maxLength={100}
-                  placeholder="Operation Northstar"
-                />
-              </label>
-              <label>
-                Description
-                <textarea
-                  name="description"
-                  maxLength={500}
-                  placeholder="What are you investigating?"
-                />
-              </label>
-              {error && <p className="danger">{error}</p>}
-              <button className="button primary full" disabled={busy}>
-                Create case <Plus size={15} />
-              </button>
-            </form>
-          </section>
-        </div>
-      )}
-      {selected && (
-        <div className="drawer-overlay" onClick={() => setSelected(null)}>
-          <aside
-            className="drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="alert-title"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="drawer-top">
-              <span className="eyebrow">SIGNAL DETAIL</span>
-              <button
-                className="icon-button"
-                aria-label="Close alert"
-                onClick={() => setSelected(null)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <Badge value={selected.severity} />
-            <h2 id="alert-title">{selected.title}</h2>
-            <p className="mono break">{selected.txid}</p>
-            <div className="alert-score">
-              <strong>
-                {selected.model_version?.startsWith("rules-only")
-                  ? "—"
-                  : selected.score.toFixed(0)}
-                <small>/100</small>
-              </strong>
-              <span>
-                {demo ? "Illustrative anomaly score" : "Relative anomaly score"}
-                <small>Not a probability of wrongdoing</small>
-              </span>
-            </div>
-            <DetectionEvidence
-              alert={selected}
-              dataset={datasets.find((d) => d.id === selected.dataset_id)}
-            />
-            <h3>Why this was flagged</h3>
-            {selected.reasons.map((r) => (
-              <div className="reason" key={r}>
-                <span />
-                <p>{r}</p>
+                </div>
+
+                {/* Investigation Timeline */}
+                <div style={{ marginBottom: "20px" }}>
+                  <h4 style={{ fontSize: "12px", fontWeight: 600, color: "#79dfb8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                    Forensic Activity Timeline
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {(selectedCase.timeline || []).map((ev) => (
+                      <div key={ev.id} style={{ display: "flex", gap: "10px", padding: "8px 12px", background: "#0a0f16", borderRadius: "6px", border: "1px solid #1e293b", fontSize: "11.5px" }}>
+                        <Clock size={14} style={{ color: "#38bdf8", flexShrink: 0, marginTop: "2px" }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: "#f8fafc", fontWeight: 500 }}>{ev.summary}</div>
+                          <div style={{ color: "#64748b", fontSize: "10px" }}>By {ev.actor_name || "System"} · {timeAgo(ev.created_at)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Case Notes & Analyst Input */}
+                <div>
+                  <h4 style={{ fontSize: "12px", fontWeight: 600, color: "#79dfb8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                    Analyst Working Notes
+                  </h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "12px" }}>
+                    {(selectedCase.notes || []).map((n) => (
+                      <div key={n.id} style={{ padding: "8px 12px", background: "#0a0f16", borderRadius: "6px", border: "1px solid #1e293b", fontSize: "11.5px" }}>
+                        <p style={{ color: "#cbd5e1", margin: 0 }}>{n.note}</p>
+                        <div style={{ color: "#64748b", fontSize: "10px", marginTop: "4px" }}>
+                          {n.author_name || "Analyst"} · {timeAgo(n.created_at)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      placeholder="Add investigation observation or hypothesis..."
+                      value={newCaseNote}
+                      onChange={(e) => setNewCaseNote(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddCaseNote()}
+                      style={{ flex: 1, padding: "8px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+                    />
+                    <button className="button primary small" onClick={handleAddCaseNote}>
+                      <Send size={13} /> Add Note
+                    </button>
+                  </div>
+                </div>
               </div>
-            ))}
-            <div className="safeguard">
-              <Info size={18} />
+            ) : (
+              <div style={{ display: "grid", placeItems: "center", color: "#64748b", fontSize: "13px" }}>
+                Select a case to inspect evidence and timeline.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 5: GRAPH EXPLORER */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "graph" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Search and control bar */}
+            <div style={{ display: "flex", gap: "10px", background: "#11171f", padding: "12px 16px", borderRadius: "8px", border: "1px solid #1e293b", alignItems: "center" }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <GitBranch size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b" }} />
+                <input
+                  type="text"
+                  placeholder="Enter Transaction ID (TXID) to render UTXO flow graph..."
+                  value={graphTxid}
+                  onChange={(e) => setGraphTxid(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && loadGraph(graphTxid)}
+                  style={{ width: "100%", padding: "8px 10px 8px 32px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+                />
+              </div>
+              <button className="button primary" onClick={() => loadGraph(graphTxid)} disabled={loadingGraph}>
+                <RefreshCw size={13} className={loadingGraph ? "spinner" : ""} /> Render Graph
+              </button>
+            </div>
+
+            {/* Cytoscape Canvas */}
+            <div style={{ height: "620px", width: "100%" }}>
+              <Graph
+                graphData={graphData}
+                loading={loadingGraph}
+                selectedNodeId={selectedGraphNode}
+                onSelectNode={(nodeId, type) => {
+                  setSelectedGraphNode(nodeId);
+                  showToast(`Selected ${type}: ${short(nodeId, 8)}`);
+                }}
+              />
+            </div>
+
+            {/* Graph Context Footer */}
+            {graphData && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#94a3b8", background: "#11171f", padding: "10px 16px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                <span>Graph Rendered: <b>{graphData.node_count}</b> Nodes, <b>{graphData.edge_count}</b> Edges</span>
+                <span style={{ color: "#e8b36a" }}>{graphData.disclaimer}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 6: AI ANALYST (GEMINI + FORENSIC RAG) */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "ai_analyst" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "16px" }}>
+            {/* Input & Prompt Engineering Panel */}
+            <div className="panel" style={{ padding: "20px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                <Sparkles size={18} style={{ color: "#79dfb8" }} />
+                <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc" }}>AI Security Analyst Engine</h3>
+              </div>
+              <p style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "16px" }}>
+                Grounds ML anomaly scores and rule violations with Bitcoin forensics doctrines and generates defensible, evidence-backed security assessments.
+              </p>
+
+              {/* Target Context Inputs */}
+              <div style={{ display: "flex", gap: "10px", marginBottom: "12px" }}>
+                <input
+                  type="text"
+                  placeholder="Optional Target TXID..."
+                  value={aiTargetTxid}
+                  onChange={(e) => setAiTargetTxid(e.target.value)}
+                  style={{ flex: 1, padding: "8px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+                />
+              </div>
+
+              {/* Quick Prompt Pills */}
+              <div style={{ marginBottom: "12px" }}>
+                <small style={{ color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", fontSize: "10px" }}>Quick Investigation Prompts</small>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "6px" }}>
+                  <button className="button small" onClick={() => handleAIQuery("Explain why this transaction anomaly score was flagged as high.")}>
+                    Why flagged?
+                  </button>
+                  <button className="button small" onClick={() => handleAIQuery("What are the recommended next steps to investigate this peeling chain?")}>
+                    Investigate Next
+                  </button>
+                  <button className="button small" onClick={() => handleAIQuery("Summarize the structural Bitcoin transaction patterns and risk indicators.")}>
+                    Pattern Summary
+                  </button>
+                  <button className="button small" onClick={() => handleAIQuery("Could this equal-split transaction be CoinJoin or mixer traffic?")}>
+                    CoinJoin Check
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Prompt Box */}
+              <textarea
+                rows={4}
+                placeholder="Ask the AI Analyst to evaluate specific transaction traffic, explain heuristics, or draft case findings..."
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginBottom: "12px", resize: "vertical" }}
+              />
+
+              <button
+                className="button primary"
+                onClick={() => handleAIQuery()}
+                disabled={loadingAI}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", width: "100%" }}
+              >
+                <Bot size={15} className={loadingAI ? "spinner" : ""} />
+                {loadingAI ? "Analyzing Blockchain Evidence..." : "Run AI Analyst Analysis"}
+              </button>
+            </div>
+
+            {/* Structured AI Analysis Output */}
+            <div className="panel" style={{ padding: "20px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px", overflowY: "auto", maxHeight: "700px" }}>
+              {aiAnalysis ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ borderBottom: "1px solid #1e293b", paddingBottom: "12px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#79dfb8" }}>Executive Analyst Summary</h4>
+                      <span className="badge low">{aiAnalysis.model_used}</span>
+                    </div>
+                    <p style={{ fontSize: "12.5px", color: "#f8fafc", lineHeight: 1.6 }}>{aiAnalysis.summary}</p>
+                  </div>
+
+                  {/* Facts vs Indications Breakdown */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                    <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#38bdf8", marginBottom: "6px" }}>VERIFIED FACTS</div>
+                      <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "#cbd5e1" }}>
+                        {aiAnalysis.facts.map((f, i) => <li key={i}>{f}</li>)}
+                      </ul>
+                    </div>
+
+                    <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                      <div style={{ fontSize: "11px", fontWeight: 600, color: "#e8b36a", marginBottom: "6px" }}>MODEL INDICATIONS</div>
+                      <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "#cbd5e1" }}>
+                        {aiAnalysis.model_indications.map((mi, i) => <li key={i}>{mi}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Recommended Next Steps */}
+                  <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b" }}>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: "#79dfb8", marginBottom: "6px" }}>RECOMMENDED INVESTIGATION STEPS</div>
+                    <ul style={{ margin: 0, paddingLeft: "16px", fontSize: "11px", color: "#cbd5e1" }}>
+                      {aiAnalysis.recommended_steps.map((step, i) => <li key={i}>{step}</li>)}
+                    </ul>
+                  </div>
+
+                  {/* Legal & Ethical Limitations */}
+                  <div style={{ background: "#16130d", border: "1px solid #422006", padding: "10px 12px", borderRadius: "6px", fontSize: "11px", color: "#e8b36a" }}>
+                    <b>Analytical Limitation:</b> {aiAnalysis.limitations}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", placeItems: "center", height: "300px", color: "#64748b", textAlign: "center" }}>
+                  <div>
+                    <Bot size={36} style={{ marginBottom: "8px", opacity: 0.5 }} />
+                    <p style={{ margin: 0, fontSize: "13px" }}>AI Analyst is idle.</p>
+                    <small>Submit a prompt or click a quick pill to generate an assessment.</small>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 7: FORENSIC KNOWLEDGE BASE (RAG) */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "knowledge_base" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ background: "#11171f", padding: "16px", borderRadius: "8px", border: "1px solid #1e293b" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#f8fafc", marginBottom: "8px" }}>
+                Bitcoin Forensic Doctrine & Typology Vector Search (RAG)
+              </h3>
+              <p style={{ fontSize: "12px", color: "#94a3b8", marginBottom: "14px" }}>
+                Semantic search over the embedded knowledge base covering Peel Chains, CoinJoin heuristics, Fan-out typologies, and chain analysis doctrines.
+              </p>
+
+              <form onSubmit={handleRAGSearch} style={{ display: "flex", gap: "10px" }}>
+                <input
+                  type="text"
+                  placeholder="Ask a technical blockchain question or search typologies (e.g. 'Peel chain heuristics', 'CoinJoin signatures')..."
+                  value={ragQuery}
+                  onChange={(e) => setRagQuery(e.target.value)}
+                  style={{ flex: 1, padding: "8px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px" }}
+                />
+                <button type="submit" className="button primary" disabled={loadingRAG}>
+                  <Search size={14} className={loadingRAG ? "spinner" : ""} /> Search Docs
+                </button>
+              </form>
+            </div>
+
+            {/* Results Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              {ragResults.map((r, i) => (
+                <div key={i} className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#79dfb8", textTransform: "uppercase" }}>
+                      {r.metadata?.category || "DOC"} · Similarity: {(r.similarity * 100).toFixed(1)}%
+                    </span>
+                    <span className="badge low">{r.metadata?.doc_id || "doc"}</span>
+                  </div>
+                  <h4 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc", marginBottom: "8px" }}>
+                    {r.metadata?.title || "Forensic Reference"}
+                  </h4>
+                  <p style={{ fontSize: "12px", color: "#cbd5e1", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                    {r.content}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 8: INVESTIGATION REPORTS */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "reports" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ background: "#11171f", padding: "16px", borderRadius: "8px", border: "1px solid #1e293b", display: "flex", alignItems: "center", gap: "12px" }}>
+              <select
+                value={reportCaseId}
+                onChange={(e) => setReportCaseId(e.target.value)}
+                style={{ padding: "8px 12px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", minWidth: "260px" }}
+              >
+                <option value="">Select an Investigation Case</option>
+                {cases.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title} ({c.id})</option>
+                ))}
+              </select>
+
+              <button
+                className="button primary"
+                onClick={() => handleGenerateReport(reportCaseId)}
+                disabled={!reportCaseId || loadingReport}
+              >
+                <FileCheck size={14} className={loadingReport ? "spinner" : ""} /> Generate Case Report
+              </button>
+
+              {reportData && (
+                <button
+                  className="button"
+                  onClick={() => downloadReportJSON(reportData, `sentinel-case-${reportCaseId}.json`)}
+                >
+                  <Download size={14} /> Export JSON
+                </button>
+              )}
+            </div>
+
+            {reportData && (
+              <div className="panel" style={{ padding: "24px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ borderBottom: "1px solid #1e293b", paddingBottom: "16px" }}>
+                  <div style={{ fontSize: "10px", color: "#79dfb8", letterSpacing: "1.5px", fontWeight: 700 }}>OFFICIAL SOC INVESTIGATION REPORT</div>
+                  <h2 style={{ fontSize: "18px", fontWeight: 700, color: "#f8fafc", marginTop: "4px" }}>{reportData.case_metadata?.title}</h2>
+                  <div style={{ fontSize: "11px", color: "#64748b", marginTop: "4px" }}>
+                    Generated: {reportData.generated_at} | Priority: <b>{reportData.case_metadata?.priority}</b> | Status: <b>{reportData.case_metadata?.status}</b>
+                  </div>
+                </div>
+
+                {/* Evidence Summary Table */}
+                <div>
+                  <h4 style={{ fontSize: "12px", fontWeight: 600, color: "#79dfb8", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "8px" }}>
+                    Attached Subject Transactions ({reportData.attached_transactions?.length || 0})
+                  </h4>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11.5px" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #1e293b", textAlign: "left", color: "#64748b" }}>
+                        <th style={{ padding: "6px" }}>TXID</th>
+                        <th style={{ padding: "6px" }}>Total Volume</th>
+                        <th style={{ padding: "6px" }}>Risk Score</th>
+                        <th style={{ padding: "6px" }}>Flagged</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(reportData.attached_transactions || []).map((t: any) => (
+                        <tr key={t.txid} style={{ borderBottom: "1px solid #16202c" }}>
+                          <td style={{ padding: "6px", fontFamily: "monospace", color: "#79dfb8" }}>{t.txid}</td>
+                          <td style={{ padding: "6px" }}>{btc(t.total_output_sats)} BTC</td>
+                          <td style={{ padding: "6px" }}><span className={`badge ${t.risk_level.toLowerCase()}`}>{t.risk_score}</span></td>
+                          <td style={{ padding: "6px" }}>{t.is_flagged ? "Yes" : "No"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Regulatory / Legal Disclaimer */}
+                <div style={{ background: "#0a0f16", padding: "12px", borderRadius: "6px", border: "1px solid #1e293b", fontSize: "11px", color: "#94a3b8" }}>
+                  <b>Legal Disclaimer:</b> {reportData.disclaimer}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 9: AUDIT LOGS */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "audit_logs" && (
+          <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ fontSize: "14px", fontWeight: 600, color: "#f8fafc" }}>Security Operations Audit Trail</h3>
+              <button className="button small" onClick={loadAuditLogs}>
+                <RefreshCw size={12} className={loadingAudit ? "spinner" : ""} /> Refresh
+              </button>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #1e293b", textAlign: "left", color: "#64748b" }}>
+                    <th style={{ padding: "8px 6px" }}>Timestamp</th>
+                    <th style={{ padding: "8px 6px" }}>Actor</th>
+                    <th style={{ padding: "8px 6px" }}>Action</th>
+                    <th style={{ padding: "8px 6px" }}>Target</th>
+                    <th style={{ padding: "8px 6px" }}>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id} style={{ borderBottom: "1px solid #16202c" }}>
+                      <td style={{ padding: "8px 6px", color: "#64748b", whiteSpace: "nowrap" }}>{timeAgo(log.created_at)}</td>
+                      <td style={{ padding: "8px 6px", color: "#38bdf8" }}>{log.actor_name || "System"}</td>
+                      <td style={{ padding: "8px 6px", fontWeight: 600, color: "#f8fafc" }}>{log.action}</td>
+                      <td style={{ padding: "8px 6px", color: "#79dfb8" }}>{log.target_type} ({short(log.target_id || "", 6)})</td>
+                      <td style={{ padding: "8px 6px", color: "#94a3b8", fontFamily: "monospace", fontSize: "11px" }}>{log.details_json || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* VIEW 10: ML MODEL STATUS & EVALUATION */}
+        {/* ------------------------------------------------------------- */}
+        {activeTab === "model_eval" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              {/* Isolation Forest Status */}
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#79dfb8", marginBottom: "10px", textTransform: "uppercase" }}>
+                  Isolation Forest Anomaly Model
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", color: "#cbd5e1" }}>
+                  <div><b>Status:</b> {modelStatus?.isolation_forest?.status || "READY"}</div>
+                  <div><b>Contamination:</b> {modelStatus?.isolation_forest?.contamination ?? 0.05}</div>
+                  <div><b>Trees (n_estimators):</b> {modelStatus?.isolation_forest?.n_estimators ?? 100}</div>
+                  <div><b>Dataset Size:</b> {modelStatus?.isolation_forest?.training_samples ?? 120} samples</div>
+                </div>
+              </div>
+
+              {/* Engine Metrics */}
+              <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+                <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#38bdf8", marginBottom: "10px", textTransform: "uppercase" }}>
+                  Feature Pipeline Specs
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "12px", color: "#cbd5e1" }}>
+                  <div><b>Feature Vector Dimensions:</b> 14 extracted features</div>
+                  <div><b>Normalization:</b> Robust Percentile Scaling (0-100)</div>
+                  <div><b>Supported Heuristics:</b> 8 configurable rule detectors</div>
+                  <div><b>Offline Capability:</b> 100% deterministic fallback enabled</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Weighting Preview */}
+            <div className="panel" style={{ padding: "16px", background: "#11171f", border: "1px solid #1e293b", borderRadius: "8px" }}>
+              <h3 style={{ fontSize: "13px", fontWeight: 600, color: "#f8fafc", marginBottom: "12px" }}>
+                Evaluated Feature Weights in Risk Fusion
+              </h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px", fontSize: "11.5px" }}>
+                {[
+                  { name: "Peel Chain Pattern", weight: "25%", color: "#f87171" },
+                  { name: "Fan-Out Ratio", weight: "20%", color: "#fb923c" },
+                  { name: "Equal Split (CoinJoin)", weight: "15%", color: "#e8b36a" },
+                  { name: "High Consolidation", weight: "15%", color: "#38bdf8" },
+                  { name: "Abnormal Fee Rate", weight: "10%", color: "#79dfb8" },
+                  { name: "Dust Attack Signature", weight: "15%", color: "#c084fc" },
+                ].map((f, i) => (
+                  <div key={i} style={{ padding: "8px 12px", background: "#0a0f16", borderRadius: "6px", border: "1px solid #1e293b", display: "flex", justifyContent: "space-between" }}>
+                    <span>{f.name}</span>
+                    <b style={{ color: f.color }}>{f.weight}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: CREATE CASE */}
+      {/* ------------------------------------------------------------- */}
+      {isNewCaseModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "grid", placeItems: "center", zIndex: 1000 }}>
+          <div className="panel" style={{ width: "460px", padding: "24px", background: "#11171f", border: "1px solid #334155", borderRadius: "8px" }}>
+            <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#f8fafc", marginBottom: "12px" }}>Create Investigation Case</h3>
+            <form onSubmit={handleCreateCase} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
-                <strong>Consider an alternative</strong>
-                <p>{selected.alternative}</p>
+                <label style={{ fontSize: "11px", color: "#94a3b8" }}>Case Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Investigation into suspicious peel chain on Block 850000"
+                  value={newCaseTitle}
+                  onChange={(e) => setNewCaseTitle(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginTop: "4px" }}
+                />
               </div>
-            </div>
-            <h3>Evidence lineage</h3>
-            <dl>
-              <dt>Transaction observed</dt>
-              <dd>{utc(selected.transaction_observed_at)}</dd>
-              <dt>Detected by analysis</dt>
-              <dd>{utc(selected.detected_at)}</dd>
-              <dt>Alert record created</dt>
-              <dd>
-                {selected.detected_at
-                  ? utc(selected.created_at)
-                  : "Legacy timestamp basis not recorded"}
-              </dd>
-              <dt>Model</dt>
-              <dd>{selected.model_version || "sentinel-iforest-v1"}</dd>
-              <dt>Dataset</dt>
-              <dd className="mono">{selected.dataset_id}</dd>
-              <dt>Attribution</dt>
-              <dd>Ownership unknown</dd>
-            </dl>
-            <button
-              className="button primary full"
-              onClick={() => {
-                setGraphTx(selected.txid);
-                navigate("Graph explorer");
-                setSelected(null);
-              }}
-            >
-              <Network size={16} />
-              Explore transaction graph
-            </button>
-            <button
-              className="button full"
-              disabled={!demo && !canWrite}
-              onClick={() => review(selected)}
-            >
-              <CheckCircle2 size={16} />
-              {selected.status === "open"
-                ? "Mark as reviewed"
-                : "Reopen for review"}
-            </button>
-            <button
-              className="button full"
-              onClick={() => {
-                setTxDetail({ txid: selected.txid });
-                setSelected(null);
-              }}
-            >
-              Inspect full transaction <ArrowRight size={15} />
-            </button>
-            <button className="text-button" onClick={report}>
-              <ArrowDownToLine size={14} />
-              Export case evidence
-            </button>
-          </aside>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8" }}>Priority Level</label>
+                <select
+                  value={newCasePriority}
+                  onChange={(e) => setNewCasePriority(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginTop: "4px" }}
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="CRITICAL">Critical</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8" }}>Investigation Synopsis</label>
+                <textarea
+                  rows={3}
+                  placeholder="Describe preliminary indicators or investigative lead..."
+                  value={newCaseDesc}
+                  onChange={(e) => setNewCaseDesc(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginTop: "4px", resize: "none" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+                <button type="button" className="button" onClick={() => setIsNewCaseModalOpen(false)}>Cancel</button>
+                <button type="submit" className="button primary">Initialize Case</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
-      {txDetail && (
-        <TransactionDrawer
-          txid={txDetail.txid}
-          caseId={current.id}
-          demo={demo}
-          alerts={alerts}
-          onClose={() => setTxDetail(null)}
-          onSelect={(id) => setTxDetail({ txid: id })}
-          onTrace={(id) => {
-            setGraphTx(id);
-            navigate("Graph explorer");
-            setTxDetail(null);
-          }}
-          onAlert={(a) => {
-            setTxDetail(null);
-            setSelected(a);
-          }}
-        />
+
+      {/* ------------------------------------------------------------- */}
+      {/* MODAL: AUTHENTICATION */}
+      {/* ------------------------------------------------------------- */}
+      {isAuthModalOpen && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "grid", placeItems: "center", zIndex: 1000 }}>
+          <div className="panel" style={{ width: "380px", padding: "24px", background: "#11171f", border: "1px solid #334155", borderRadius: "8px" }}>
+            <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#f8fafc", marginBottom: "4px" }}>Sentinel SOC Sign In</h3>
+            <p style={{ fontSize: "11px", color: "#94a3b8", marginBottom: "16px" }}>Default: analyst@sentinel.sec / analyst123</p>
+
+            {authError && (
+              <div style={{ padding: "8px 10px", background: "#450a0a", border: "1px solid #f87171", borderRadius: "4px", color: "#fca5a5", fontSize: "11px", marginBottom: "12px" }}>
+                {authError}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8" }}>Email</label>
+                <input
+                  type="email"
+                  required
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginTop: "4px" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "11px", color: "#94a3b8" }}>Password</label>
+                <input
+                  type="password"
+                  required
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  style={{ width: "100%", padding: "8px 10px", background: "#0a0f16", border: "1px solid #334155", borderRadius: "6px", color: "#f8fafc", fontSize: "12px", marginTop: "4px" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+                <button type="button" className="button" onClick={() => setIsAuthModalOpen(false)}>Cancel</button>
+                <button type="submit" className="button primary">Sign In</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

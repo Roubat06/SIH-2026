@@ -1,308 +1,334 @@
 import training from "./demo-transactions.json";
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "ANALYST" | "VIEWER";
+};
+
+export type TxInput = {
+  prev_txid?: string | null;
+  prev_vout?: number | null;
+  address?: string | null;
+  value_sats: number;
+  sequence?: number | null;
+  script_type?: string | null;
+};
+
+export type TxOutput = {
+  output_index: number;
+  address?: string | null;
+  value_sats: number;
+  script_type?: string | null;
+};
+
 export type Detection = {
+  id?: string;
   code: string;
   stage: string;
   detector: string;
   title: string;
-  feature: string;
-  observed: number;
-  operator: string;
-  threshold: number;
-  baseline: number | null;
-  unit: string;
-  detected_at: string;
+  feature?: string;
+  observed?: number;
+  operator?: string;
+  threshold?: number;
+  baseline?: number | null;
+  unit?: string;
   reason: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  created_at?: string;
 };
-export type StageEvent = {
-  id: string;
-  stage: string;
-  status: string;
-  at: string;
-  detail: Record<string, unknown>;
-};
+
 export type Tx = {
   txid: string;
-  observed_at: string | null;
-  block_time?: string | null;
-  confirmed?: boolean | null;
-  confirmations?: number | null;
-  block_height?: number | null;
   block_hash?: string | null;
+  block_height?: number | null;
+  block_time?: string | null;
+  observed_at?: string | null;
   size_bytes?: number | null;
+  vsize?: number | null;
   weight?: number | null;
-  version?: number | null;
-  locktime?: number | null;
-  inputs: { prev_txid: string; prev_vout: number }[];
-  outputs: {
-    index: number;
-    value_sats: number;
-    address?: string | null;
-    script_type?: string | null;
-    script_hex?: string | null;
-  }[];
-  fee_sats: number | null;
-  vsize: number | null;
-  dataset_id?: string;
-  source_record?: number;
+  fee_sats?: number | null;
+  fee_rate?: number | null;
+  total_input_sats: number;
+  total_output_sats: number;
+  input_count: number;
+  output_count: number;
+  confirmed: boolean;
+  risk_score: number;
+  risk_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  anomaly_score: number;
+  anomaly_label: number;
+  is_flagged: boolean;
+  source: string;
+  inputs?: TxInput[];
+  outputs?: TxOutput[];
+  detections?: Detection[];
+  alerts?: Alert[];
+  cases?: Case[];
 };
+
 export type Alert = {
   id: string;
   txid: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  risk_score: number;
+  anomaly_score: number;
+  detection_method: string;
   title: string;
-  severity: string;
-  score: number;
-  reasons: string[];
-  alternative: string;
-  detected_at?: string;
-  reviewed_at?: string;
-  first_detected_stage?: string;
-  detection_stages?: string[];
-  transaction_observed_at?: string | null;
-  transaction_block_time?: string | null;
+  reason: string;
+  evidence_json?: string;
+  status: "NEW" | "UNDER_REVIEW" | "ESCALATED" | "RESOLVED" | "FALSE_POSITIVE";
+  created_at: string;
+  updated_at?: string;
+  total_output_sats?: number;
+  input_count?: number;
+  output_count?: number;
+  fee_rate?: number;
+  observed_at?: string;
+  transaction?: Tx;
   detections?: Detection[];
-  status: string;
-  created_at: string;
-  model_version?: string;
-  dataset_id?: string;
 };
-export type Dataset = {
-  id: string;
-  name: string;
-  status: string;
-  count: number;
-  created_at: string;
-  sha256?: string;
-  error?: string;
-  warnings?: string[];
-  progress?: number;
-  stage_events?: StageEvent[];
-  current_stage?: string;
-  synthetic?: boolean;
-};
+
 export type Case = {
   id: string;
-  name: string;
-  description: string;
-  member_role: string;
-  synthetic?: boolean;
+  title: string;
+  description?: string;
+  status: "OPEN" | "INVESTIGATING" | "ESCALATED" | "RESOLVED" | "CLOSED";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  lead_investigator_id?: string;
+  lead_investigator_name?: string;
+  transaction_count?: number;
+  created_at?: string;
+  updated_at?: string;
+  transactions?: Tx[];
+  timeline?: InvestigationEvent[];
+  notes?: InvestigationNote[];
 };
-export type User = { id: string; name: string; email: string; role: string };
-export type Summary = {
-  transactions: number;
-  total_output_sats: number;
-  alerts_count: number;
-  high_priority: number;
-  chart: { label: string; count: number }[];
-  alerts: Alert[];
-  datasets: Dataset[];
+
+export type InvestigationEvent = {
+  id: string;
+  case_id?: string;
+  txid?: string;
+  event_type: string;
+  actor_id?: string;
+  actor_name?: string;
+  summary: string;
+  details_json?: string;
+  created_at: string;
 };
-export const short = (s: string, n = 7) =>
-  s.length > n * 2 ? `${s.slice(0, n)}…${s.slice(-n)}` : s;
+
+export type InvestigationNote = {
+  id: string;
+  case_id: string;
+  author_id?: string;
+  author_name?: string;
+  note: string;
+  created_at: string;
+};
+
+export type AuditLog = {
+  id: string;
+  actor_id?: string;
+  actor_name?: string;
+  action: string;
+  target_type?: string;
+  target_id?: string;
+  details_json?: string;
+  ip_address?: string;
+  created_at: string;
+};
+
+export type GraphElement = {
+  data: {
+    id: string;
+    label: string;
+    type?: "transaction" | "address";
+    source?: string;
+    target?: string;
+    risk_score?: number;
+    risk_level?: string;
+    total_sats?: number;
+    value_sats?: number;
+    is_target?: boolean;
+    is_input?: boolean;
+    is_output?: boolean;
+  };
+};
+
+export type GraphResponse = {
+  target_txid: string;
+  node_count: number;
+  edge_count: number;
+  elements: {
+    nodes: GraphElement[];
+    edges: GraphElement[];
+  };
+  disclaimer: string;
+};
+
+export type DashboardSummary = {
+  kpis: {
+    monitored_transactions: number;
+    active_alerts: number;
+    high_risk_transactions: number;
+    open_cases: number;
+    anomalies_detected: number;
+  };
+  risk_distribution: {
+    LOW: number;
+    MEDIUM: number;
+    HIGH: number;
+    CRITICAL: number;
+  };
+  alert_severity_distribution: {
+    LOW: number;
+    MEDIUM: number;
+    HIGH: number;
+    CRITICAL: number;
+  };
+  traffic_series: {
+    hour_bucket: string;
+    tx_count: number;
+    total_volume_sats: number;
+    avg_risk: number;
+  }[];
+  recent_alerts: Alert[];
+  recent_cases: Case[];
+  ingestion_status: {
+    latest_block: number;
+    block_hash: string;
+    status: string;
+    source: string;
+    total_stored: number;
+    last_sync: string;
+  };
+};
+
+export type AIAnalysisResponse = {
+  summary: string;
+  evidence: string[];
+  why_it_matters: string;
+  recommended_steps: string[];
+  limitations: string;
+  facts: string[];
+  model_indications: string[];
+  suggestions: string[];
+  model_used: string;
+  rag_sources: string[];
+};
+
+export const short = (s: string, n = 8) =>
+  s && s.length > n * 2 ? `${s.slice(0, n)}…${s.slice(-n)}` : s || "";
+
 export const btc = (n: number) =>
-  (n / 1e8).toLocaleString("en-US", { maximumFractionDigits: 5 });
-export const demoTx: Tx[] = training.transactions.map((t, i) => ({
-  ...t,
-  dataset_id: "demo-dataset",
-  source_record: i + 1,
-}));
-export const demoAlerts: Alert[] = [140, 100, 60, 20, 179, 178, 177].map(
-  (i, k) => ({
-    id: `alert-${i}`,
-    txid: demoTx[i].txid,
-    title: k < 4 ? "Unusual output fan-out" : "Elevated output count",
-    severity: k < 4 ? "high" : "medium",
-    score: 97 - k * 4,
-    reasons: [
-      `${demoTx[i].outputs.length} outputs created in one transaction.`,
-      `Output count exceeds the configured review threshold.`,
-      `Synthetic scenario supplied to illustrate investigation workflow.`,
-    ],
-    alternative:
-      "Payment batching or wallet maintenance may explain this pattern. Ownership and intent are unknown.",
-    status: k === 5 ? "reviewed" : "open",
-    created_at: demoTx[i].observed_at!,
-    model_version: "illustrative-demo-v1",
-    dataset_id: "demo-dataset",
-  }),
-);
-demoAlerts.forEach((a, index) => {
-  const stage = index < 4 ? "rule_detection" : "model_scoring";
-  const detected = new Date(
-    Date.UTC(2026, 8, 1, 0, 0, stage === "rule_detection" ? 3 : 5),
-  ).toISOString();
-  a.transaction_observed_at = a.created_at;
-  a.detected_at = detected;
-  a.created_at = "2026-09-01T00:00:06Z";
-  a.first_detected_stage = stage;
-  a.detection_stages = [stage];
-  if (index >= 4) {
-    a.score = 98.8 - (index - 4) * 0.5;
-    a.title = "Multivariate transaction anomaly";
-  }
-  const observed =
-    index < 4 ? demoTx.find((t) => t.txid === a.txid)!.outputs.length : a.score;
-  const threshold = index < 4 ? 10 : 97;
-  const reason =
-    index < 4
-      ? `${observed} outputs meet the fan-out threshold of ${threshold}; demo baseline is 2.`
-      : `Illustrative anomaly percentile ${observed} meets the review threshold of ${threshold}.`;
-  a.detections = [
-    {
-      code: index < 4 ? "fan_out" : "isolation_forest",
-      stage,
-      detector:
-        index < 4 ? "Count threshold rule" : "Isolation Forest (illustrative)",
-      title: a.title,
-      feature: index < 4 ? "output_count" : "anomaly_percentile",
-      observed,
-      operator: ">=",
-      threshold,
-      baseline: index < 4 ? 2 : null,
-      unit: index < 4 ? "count" : "percentile",
-      detected_at: detected,
-      reason,
-    },
-  ];
-  a.reasons = [
-    reason,
-    "Synthetic demonstration only; this is not a measured model result.",
-  ];
-});
-export const demoCase: Case = {
-  id: "demo",
-  name: "Operation Northstar",
-  description: "Synthetic Bitcoin activity · training investigation",
-  member_role: "viewer",
-  synthetic: true,
+  ((n || 0) / 1e8).toLocaleString("en-US", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6,
+  });
+
+export const sats = (n: number) => (n || 0).toLocaleString("en-US");
+
+export const timeAgo = (dateStr?: string) => {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diffSec < 60) return `${Math.max(1, diffSec)}s ago`;
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
 };
-export const demoDataset: Dataset = {
-  id: "demo-dataset",
-  name: "northstar_training.json",
-  status: "completed",
-  count: demoTx.length,
-  created_at: "2026-09-01T00:00:00Z",
-  warnings: ["Synthetic data. Not live Bitcoin activity."],
-  synthetic: true,
-  stage_events: [
-    "validation",
-    "feature_engineering",
-    "rule_detection",
-    "model_scoring",
-    "alert_generation",
-  ].map((stage, i) => ({
-    id: `demo-stage-${i}`,
-    stage,
-    status: "completed",
-    at: new Date(Date.UTC(2026, 8, 1, 0, 0, [1, 2, 3, 5, 6][i])).toISOString(),
-    detail: { note: "Illustrative synthetic stage event" },
-  })),
-};
-export function demoSummary(): Summary {
-  return {
-    transactions: demoTx.length,
-    total_output_sats: demoTx.reduce(
-      (s, t) => s + t.outputs.reduce((v, o) => v + o.value_sats, 0),
-      0,
-    ),
-    alerts_count: demoAlerts.length,
-    high_priority: 4,
-    chart: Array.from({ length: 24 }, (_, h) => ({
-      label: `${h.toString().padStart(2, "0")}:00`,
-      count: demoTx.filter((t) => new Date(t.observed_at!).getUTCHours() === h)
-        .length,
-    })),
-    alerts: demoAlerts,
-    datasets: [demoDataset],
+
+// API Helper
+export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem("sentinel_jwt_token");
+  const headers: Record<string, string> = {
+    "X-Sentinel-Request": "1",
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
-}
-export function demoGraph(txid: string) {
-  const center = demoTx.findIndex((t) => t.txid === txid);
-  if (center < 0)
-    throw new Error(
-      "Transaction not found in the synthetic demo. Choose a transaction from the transaction list.",
-    );
-  const chosen = demoTx.slice(
-    Math.max(0, center - 2),
-    Math.min(demoTx.length, center + 3),
-  );
-  return {
-    nodes: chosen.flatMap((t) => [
-      {
-        data: {
-          id: t.txid,
-          label: short(t.txid, 4),
-          kind: "transaction",
-          focus: t.txid === txid,
-        },
-      },
-      ...t.outputs.slice(0, 5).map((o) => ({
-        data: {
-          id: `${t.txid}:${o.index}`,
-          label: `${btc(o.value_sats)} BTC`,
-          kind: "output",
-          focus: false,
-        },
-      })),
-    ]),
-    edges: chosen.flatMap((t) => [
-      ...t.outputs.slice(0, 5).map((o) => ({
-        data: {
-          id: `create:${t.txid}:${o.index}`,
-          source: t.txid,
-          target: `${t.txid}:${o.index}`,
-          label: "creates",
-        },
-      })),
-      ...t.inputs
-        .filter((i) => chosen.some((p) => p.txid === i.prev_txid))
-        .map((i) => ({
-          data: {
-            id: `spend:${t.txid}`,
-            source: `${i.prev_txid}:${i.prev_vout}`,
-            target: t.txid,
-            label: "spent by",
-          },
-        })),
-    ]),
-    truncated: true,
-  };
-}
-export async function api(path: string, options: RequestInit = {}) {
-  const response = await fetch(`/api${path}`, {
+
+  const response = await fetch(path.startsWith("/api") ? path : `/api${path}`, {
     ...options,
-    credentials: "same-origin",
     headers: {
-      ...(options.body instanceof FormData
-        ? {}
-        : { "Content-Type": "application/json" }),
-      "X-Sentinel-Request": "1",
+      ...headers,
       ...options.headers,
     },
   });
+
   if (!response.ok) {
-    let data;
+    let errorDetail = `Request failed (${response.status})`;
     try {
-      data = await response.json();
-    } catch {
-      throw new Error(
-        `Server unavailable (${response.status}). Check that FastAPI is running.`,
-      );
-    }
-    throw new Error(
-      typeof data.detail === "string"
-        ? data.detail
-        : "Invalid request. Check the supplied fields.",
-    );
+      const err = await response.json();
+      errorDetail = err.detail || err.message || errorDetail;
+    } catch {}
+    throw new Error(errorDetail);
   }
-  return response.status === 204 ? null : response.json();
+
+  if (response.status === 204) return null as T;
+  return response.json();
 }
-export function download(data: unknown, name: string) {
-  const url = URL.createObjectURL(
-    new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }),
-  );
+
+export const api = {
+  getDashboard: () => apiFetch<DashboardSummary>("/api/dashboard"),
+  getTransactions: (params: string = "") => apiFetch<{ items: Tx[]; total: number }>(`/api/transactions?${params}`),
+  getTransaction: (txid: string) => apiFetch<Tx>(`/api/transactions/${txid}`),
+  getAlerts: (params: string = "") => apiFetch<{ items: Alert[]; total: number }>(`/api/alerts?${params}`),
+  getAlert: (id: string) => apiFetch<Alert>(`/api/alerts/${id}`),
+  updateAlertStatus: (id: string, status: string, note?: string) =>
+    apiFetch<{ message: string }>(`/api/alerts/${id}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, note }),
+    }),
+  getCases: (status?: string) => apiFetch<Case[]>(`/api/cases${status ? `?status=${status}` : ""}`),
+  createCase: (data: { title: string; description?: string; priority?: string; txids?: string[] }) =>
+    apiFetch<Case>("/api/cases", { method: "POST", body: JSON.stringify(data) }),
+  getCase: (id: string) => apiFetch<Case>(`/api/cases/${id}`),
+  addCaseNote: (caseId: string, note: string) =>
+    apiFetch<{ message: string }>(`/api/cases/${caseId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
+  attachTxToCase: (caseId: string, txid: string) =>
+    apiFetch<{ message: string }>(`/api/cases/${caseId}/transactions/${txid}`, { method: "POST" }),
+  getGraph: (txid: string) => apiFetch<GraphResponse>(`/api/graph/${txid}`),
+  getBitcoinStatus: () => apiFetch<any>("/api/bitcoin/status"),
+  syncBitcoin: (count = 15, useLiveApi = false) =>
+    apiFetch<{ status: string; transactions_processed: number; alerts_generated: number }>(
+      "/api/bitcoin/sync",
+      { method: "POST", body: JSON.stringify({ count, use_live_api: useLiveApi }) }
+    ),
+  getModelStatus: () => apiFetch<any>("/api/models/status"),
+  getModelEvaluation: () => apiFetch<any>("/api/models/evaluation"),
+  searchKnowledge: (query: string, limit = 4) =>
+    apiFetch<{ results: any[]; total_matches: number }>("/api/rag/search", {
+      method: "POST",
+      body: JSON.stringify({ query, limit }),
+    }),
+  queryAIAnalyst: (prompt: string, txid?: string, caseId?: string, includeRag = true) =>
+    apiFetch<AIAnalysisResponse>("/api/ai/analyze", {
+      method: "POST",
+      body: JSON.stringify({ prompt, txid, case_id: caseId, include_rag: includeRag }),
+    }),
+  generateReport: (caseId: string) =>
+    apiFetch<any>(`/api/reports/${caseId}`, { method: "POST" }),
+  getAuditLogs: (limit = 50) => apiFetch<{ items: AuditLog[]; total: number }>(`/api/audit?limit=${limit}`),
+  login: (email: string, password: string) =>
+    apiFetch<{ access_token: string; user: User }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+  getMe: () => apiFetch<User>("/api/auth/me"),
+};
+
+export function downloadReportJSON(data: unknown, filename: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = name;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
+

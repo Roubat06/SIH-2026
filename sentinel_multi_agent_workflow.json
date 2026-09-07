@@ -1,0 +1,182 @@
+{
+  "name": "Sentinel - Multi-Agent Alert Investigation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sentinel-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-new-alert",
+      "name": "New Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1200, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Expects body: { case_id, alert_id }\nconst body = $input.first().json.body || $input.first().json;\nreturn [{ json: { case_id: body.case_id, alert_id: body.alert_id } }];"
+      },
+      "id": "prep-context",
+      "name": "Prepare Alert Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 300]
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+        "options": { "temperature": 0.1, "maxNewTokens": 512 }
+      },
+      "id": "lm-chat",
+      "name": "HuggingFace Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatHuggingFaceInference",
+      "typeVersion": 1,
+      "position": [-960, 620],
+      "credentials": {
+        "huggingFaceApi": { "id": "REPLACE_ME", "name": "HuggingFace account (HF_TOKEN)" }
+      },
+      "notes": "Credential must hold HF_TOKEN. Swap 'model' for any HF Inference-served chat model your token has access to (e.g. a smaller model if you hit rate/latency limits on the free tier)."
+    },
+    {
+      "parameters": {
+        "connectionType": "stdio",
+        "command": "python",
+        "args": "sentinel_mcp_server.py",
+        "env": {
+          "SENTINEL_BASE_URL": "http://127.0.0.1:8000",
+          "SENTINEL_SESSION_COOKIE": "REPLACE_ME",
+          "MONGO_URI": "mongodb://127.0.0.1:27017",
+          "MONGO_DB": "bitcoin_sentinel"
+        }
+      },
+      "id": "mcp-tools",
+      "name": "Sentinel MCP Tools",
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1,
+      "position": [-700, 620]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Triage Agent. Case: {{$json.case_id}}, Alert: {{$json.alert_id}}.\nCall get_alert_detail and get_transaction for any referenced txids. Restate the raw evidence factually: triggering stage, detector, observed value, threshold, comparison operator, and reason. Do not interpret or speculate. Output plain text.",
+        "options": {}
+      },
+      "id": "agent-triage",
+      "name": "Triage Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-700, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Precedent Agent. Given this triage summary:\n{{$json.output}}\nCall search_similar_precedents with a short plain-text summary of the alert's shape. Report the top matches with their similarity scores and what was decided on them previously (reviewed/dismissed). If nothing relevant comes back, say so plainly - do not invent precedent.",
+        "options": {}
+      },
+      "id": "agent-precedent",
+      "name": "Precedent Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-440, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Typology Agent. Given this evidence and precedent:\n{{$json.output}}\nCall match_typology with a short plain-text summary of the alert's feature values and graph shape. For each candidate typology returned, only name it if you can cite a concrete matching value from the evidence above, phrased as 'resembles X' never 'is X', and include that typology's caveat text.",
+        "options": {}
+      },
+      "id": "agent-typology",
+      "name": "Typology Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [-180, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Analyst Brief Agent. Combine the triage, precedent, and typology findings below into one short advisory note for a human analyst:\n{{$json.output}}\nRules: quote at least one concrete feature value or threshold from the evidence; use 'resembles'/'may indicate', never a certainty claim; explicitly state this is exploratory, in-dataset scoring, not calibrated crime detection; end the note with the line 'AI-generated, for analyst review only.'",
+        "options": {}
+      },
+      "id": "agent-brief",
+      "name": "Analyst Brief Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [80, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://127.0.0.1:8000/api/cases/{{$('Prepare Alert Context').item.json.case_id}}/alerts/{{$('Prepare Alert Context').item.json.alert_id}}/notes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Cookie", "value": "REPLACE_ME_SESSION_COOKIE" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"note\": $json.output, \"source\": \"ai-agent-brief\" } }}"
+      },
+      "id": "post-note",
+      "name": "Post Analyst Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [340, 300]
+    },
+    {
+      "parameters": { "respondWith": "allIncomingItems", "options": {} },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [580, 300]
+    }
+  ],
+  "connections": {
+    "New Alert Webhook": {
+      "main": [[{ "node": "Prepare Alert Context", "type": "main", "index": 0 }]]
+    },
+    "Prepare Alert Context": {
+      "main": [[{ "node": "Triage Agent", "type": "main", "index": 0 }]]
+    },
+    "Triage Agent": {
+      "main": [[{ "node": "Precedent Agent", "type": "main", "index": 0 }]]
+    },
+    "Precedent Agent": {
+      "main": [[{ "node": "Typology Agent", "type": "main", "index": 0 }]]
+    },
+    "Typology Agent": {
+      "main": [[{ "node": "Analyst Brief Agent", "type": "main", "index": 0 }]]
+    },
+    "Analyst Brief Agent": {
+      "main": [[{ "node": "Post Analyst Brief", "type": "main", "index": 0 }]]
+    },
+    "Post Analyst Brief": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          { "node": "Triage Agent", "type": "ai_languageModel", "index": 0 },
+          { "node": "Precedent Agent", "type": "ai_languageModel", "index": 0 },
+          { "node": "Typology Agent", "type": "ai_languageModel", "index": 0 },
+          { "node": "Analyst Brief Agent", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    },
+    "Sentinel MCP Tools": {
+      "ai_tool": [
+        [
+          { "node": "Triage Agent", "type": "ai_tool", "index": 0 },
+          { "node": "Precedent Agent", "type": "ai_tool", "index": 0 },
+          { "node": "Typology Agent", "type": "ai_tool", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" }
+}

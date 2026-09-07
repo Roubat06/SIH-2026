@@ -1,0 +1,16 @@
+# Sentinel Tool local environment
+# Keep this file private. It is excluded from Git and must never be committed.
+
+MONGO_ROOT_PASSWORD=70c271bd4d23658b6894a12962bf8d79ed2c1b178b0130e6846b5b1275f8936b
+MONGO_APP_PASSWORD=80970b6c73b14f65ff52ec6958949ec349216b18630399aed37feb79e19eb891
+MONGO_DB=bitcoin_sentinel
+BIND_ADDRESS=127.0.0.1
+PORT=8080
+COOKIE_SECURE=false
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,http://localhost:8080,http://127.0.0.1:8080
+CANONICAL_APP_ORIGIN=https://sentineltool.vercel.app
+
+# Optional one-time administrator bootstrap. Self-service signups create analyst accounts.
+# BOOTSTRAP_ADMIN_EMAIL=admin@example.org
+# BOOTSTRAP_ADMIN_NAME=Workspace administrator
+# BOOTSTRAP_ADMIN_PASSWORD=replace_with_a_unique_password_of_at_least_12_characters

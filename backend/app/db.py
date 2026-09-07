@@ -1,41 +1,48 @@
 import os
+import sqlite3
 from datetime import datetime, timezone
-from pymongo import MongoClient
+from contextlib import contextmanager
 
-_client = None
-_test_db = None
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'sentinel.db')
+
+def get_db_path() -> str:
+    path = os.getenv('DATABASE_PATH', DEFAULT_DB_PATH)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    return path
+
+def get_connection() -> sqlite3.Connection:
+    path = get_db_path()
+    conn = sqlite3.connect(path, timeout=30.0, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON;')
+    conn.execute('PRAGMA journal_mode = WAL;')
+    conn.execute('PRAGMA synchronous = NORMAL;')
+    return conn
+
+@contextmanager
+def db_session():
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def now():
-    return datetime.now(timezone.utc)
+    return datetime.now(timezone.utc).isoformat()
 
-def database():
-    global _client
-    if _test_db is not None:
-        return _test_db
-    if _client is None:
-        _client = MongoClient(os.getenv('MONGO_URI') or os.getenv('MONGODB_URI') or 'mongodb://127.0.0.1:27017', serverSelectionTimeoutMS=3000, tz_aware=True)
-    return _client[os.getenv('MONGO_DB', 'bitcoin_sentinel')]
-
-def indexes(db):
-    db.users.create_index('email', unique=True)
-    db.sessions.create_index('expires_at', expireAfterSeconds=0)
-    db.login_attempts.create_index('expires_at', expireAfterSeconds=0)
-    db.cases.create_index('members.user_id')
-    db.transactions.create_index([('case_id', 1), ('txid', 1)], unique=True)
-    db.transactions.create_index([('case_id', 1), ('inputs.prev_txid', 1)])
-    db.transactions.create_index([('case_id', 1), ('dataset_id', 1)])
-    db.transactions.create_index([('case_id', 1), ('outputs.address', 1)])
-    db.datasets.create_index([('case_id', 1), ('sha256', 1)], unique=True)
-    db.datasets.create_index([('status', 1), ('created_at', 1)])
-    db.alerts.create_index([('case_id', 1), ('score', -1)])
-    db.features.create_index([('case_id', 1), ('txid', 1), ('dataset_id', 1)], unique=True)
-    db.transactions.create_index([('case_id',1),('observed_at',-1)])
-    db.transactions.create_index([('case_id',1),('block_time',-1)])
-    db.alerts.create_index([('case_id',1),('detection_stages',1),('detected_at',-1)])
-    db.audit.create_index([('case_id', 1), ('created_at', -1)])
-    db.observations.create_index([('case_id', 1), ('txid', 1)])
-
-def public(doc):
-    if not doc:
+def public(row):
+    if row is None:
         return None
-    return {('id' if k == '_id' else k): v for k, v in doc.items() if k not in {'password_hash', 'content', 'members'}}
+    if isinstance(row, sqlite3.Row):
+        d = dict(row)
+    elif isinstance(row, dict):
+        d = dict(row)
+    else:
+        return row
+    d.pop('password_hash', None)
+    return d
+
