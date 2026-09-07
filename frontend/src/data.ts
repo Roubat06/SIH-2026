@@ -285,7 +285,7 @@ export async function api(path: string, options: RequestInit = {}) {
       data = await response.json();
     } catch {
       throw new Error(
-        `Server unavailable (${response.status}). Check that FastAPI is running.`,
+        `Service temporarily unavailable (${response.status}). Please retry in a moment.`,
       );
     }
     throw new Error(

@@ -116,6 +116,8 @@ def test_malformed_upload_fails_without_visible_partial_data(client):
 def test_expired_sessions_csrf_and_logout(client):
     account(client)
     assert client.post('/api/cases',json={'name':'Bad origin'},headers={'Origin':'https://evil.example'}).status_code==403
+    same_origin=client.post('/api/auth/login',json={'email':'nobody@example.org','password':'wrong'},headers={'Origin':'https://legacy.example','Host':'legacy.example','X-Forwarded-Proto':'https'})
+    assert same_origin.status_code==401
     assert client.post('/api/cases',json={'name':'Bad header'},headers={'X-Sentinel-Request':'0'}).status_code==403
     db.database().sessions.update_many({}, {'$set':{'expires_at':db.now()-timedelta(seconds=1)}})
     assert client.get('/api/auth/me').status_code==401

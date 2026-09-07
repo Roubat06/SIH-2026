@@ -6,6 +6,7 @@ from collections import Counter
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, UploadFile, File, Query
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -39,6 +40,18 @@ def allowed_origins():
         if host:
             allowed.add(host if host.startswith(('http://','https://')) else f'https://{host}')
     return allowed
+
+def origin_permitted(request, origin):
+    normalized=origin.strip().rstrip('/')
+    if normalized in allowed_origins():
+        return True
+    try:
+        parsed=urlsplit(normalized)
+        request_host=request.headers.get('host','').lower()
+        request_scheme=request.headers.get('x-forwarded-proto',request.url.scheme).split(',')[0].strip().lower()
+        return parsed.scheme.lower()==request_scheme and parsed.netloc.lower()==request_host
+    except ValueError:
+        return False
 
 def ensure_bootstrap_admin(db):
     values={
@@ -86,7 +99,7 @@ async def safety_headers(request:Request,call_next):
         if request.headers.get('X-Sentinel-Request')!='1':
             return JSONResponse({'detail':'Missing request verification header.'},403)
         origin=request.headers.get('origin')
-        if origin and origin.rstrip('/') not in allowed_origins():
+        if origin and not origin_permitted(request,origin):
             return JSONResponse({'detail':'Origin not permitted.'},403)
         length=request.headers.get('content-length')
         if length is None:

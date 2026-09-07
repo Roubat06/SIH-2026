@@ -4,6 +4,13 @@ import Dashboard from "./App";
 import Landing from "./Landing";
 import "./style.css";
 
+const canonicalHost = "sentineltool.vercel.app";
+if (window.location.hostname === "sih-2026-alpha-lemon.vercel.app") {
+  window.location.replace(
+    `https://${canonicalHost}${window.location.pathname}${window.location.search}${window.location.hash}`,
+  );
+}
+
 function Router() {
   const [path, setPath] = useState(window.location.pathname || "/");
   useEffect(() => {
