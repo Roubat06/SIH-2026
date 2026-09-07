@@ -111,6 +111,7 @@ export default function App() {
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(false),
     [members, setMembers] = useState<any[]>([]);
+  const datasetInput = useRef<HTMLInputElement>(null);
   const activeCase = useRef(current.id);
   activeCase.current = current.id;
   const canWrite = !demo && ["admin", "analyst"].includes(current.member_role);
@@ -335,6 +336,36 @@ export default function App() {
       setBusy(false);
     }
   }
+  function chooseDataset() {
+    if (!user) {
+      navigate("Datasets");
+      openAuth();
+      return;
+    }
+    if (!current.id) {
+      navigate("Datasets");
+      setCreate(true);
+      return;
+    }
+    navigate("Datasets");
+    datasetInput.current?.click();
+  }
+  async function signOut() {
+    setBusy(true);
+    setError("");
+    try {
+      await api("/auth/logout", { method: "POST" });
+      setUser(null);
+      showDemo();
+      setLogin(true);
+      setSignup(false);
+      window.history.pushState({}, "Sign in", "/dashboard?auth=signin");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function seedDemo() {
     setBusy(true);
     try {
@@ -520,14 +551,7 @@ export default function App() {
           </div>
           <button
             className="user-card"
-            onClick={() =>
-              user
-                ? api("/auth/logout", { method: "POST" }).then(() => {
-                    setUser(null);
-                    showDemo();
-                  })
-                : openAuth()
-            }
+            onClick={() => (user ? void signOut() : openAuth())}
           >
             <span className="avatar">
               {user ? user.name.slice(0, 2).toUpperCase() : "IF"}
@@ -609,13 +633,25 @@ export default function App() {
               </button>
               <button
                 className="button primary"
-                onClick={() => navigate("Datasets")}
+                onClick={chooseDataset}
               >
                 <Plus size={16} />
                 Import dataset
               </button>
             </div>
           </div>
+          <input
+            ref={datasetInput}
+            type="file"
+            accept=".csv,.json,.xml"
+            hidden
+            disabled={!canWrite || busy}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void upload(file);
+              e.target.value = "";
+            }}
+          />
           {demo && (
             <div className="demo-banner">
               <span>
@@ -987,23 +1023,13 @@ export default function App() {
                     Files are validated before analysis. Maximum 4 MB on Vercel
                     or 10 MB when self-hosted.
                   </p>
-                  <label
+                  <button
                     className={`button primary ${!canWrite ? "disabled" : ""}`}
+                    onClick={chooseDataset}
                   >
                     <Plus size={16} />
                     {busy ? "Processing…" : "Choose a dataset"}
-                    <input
-                      type="file"
-                      accept=".csv,.json,.xml"
-                      hidden
-                      disabled={!canWrite || busy}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void upload(file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </label>
+                  </button>
                   {demo && (
                     <button
                       className="text-button"
