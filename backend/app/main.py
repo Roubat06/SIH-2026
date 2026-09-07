@@ -101,14 +101,15 @@ async def safety_headers(request:Request,call_next):
         origin=request.headers.get('origin')
         if origin and not origin_permitted(request,origin):
             return JSONResponse({'detail':'Origin not permitted.'},403)
-        length=request.headers.get('content-length')
-        if length is None:
-            return JSONResponse({'detail':'Content-Length is required for uploads and mutations.'},411)
-        try:
-            if int(length)>max_upload()+256*1024:
-                return JSONResponse({'detail':f'Request exceeds the {max_upload()//(1024*1024)} MB upload limit.'},413)
-        except ValueError:
-            return JSONResponse({'detail':'Invalid Content-Length.'},400)
+        if request.url.path != '/api/auth/logout':
+            length=request.headers.get('content-length')
+            if length is None:
+                return JSONResponse({'detail':'Content-Length is required for uploads and mutations.'},411)
+            try:
+                if int(length)>max_upload()+256*1024:
+                    return JSONResponse({'detail':f'Request exceeds the {max_upload()//(1024*1024)} MB upload limit.'},413)
+            except ValueError:
+                return JSONResponse({'detail':'Invalid Content-Length.'},400)
     response=await call_next(request)
     response.headers['X-Content-Type-Options']='nosniff'
     response.headers['Referrer-Policy']='same-origin'
