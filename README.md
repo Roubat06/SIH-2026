@@ -120,7 +120,7 @@ PYTHONPATH=backend .venv/bin/python -m app.manage reset-password --email analyst
 
 ## Input format
 
-Ready-to-use examples are in `samples/`. All examples are synthetic. They are independent format examples; importing files that share TXIDs into the same case will skip those duplicates.
+Ready-to-use examples are in `samples/`. All examples are synthetic. Use `samples/sentineltool-test-dataset.json` for comprehensive end-to-end testing; its expected signals are documented in `samples/README.md`. The examples are independent format samples, and importing files that share TXIDs into the same case will skip those duplicates.
 
 JSON accepts a list of transactions or an object with `transactions` and optional `observations` arrays:
 
