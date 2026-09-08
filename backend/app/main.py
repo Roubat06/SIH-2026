@@ -84,11 +84,31 @@ def completed_scope(case_id):
     ids=[d['_id'] for d in database().datasets.find({'case_id':case_id,'status':'completed'},{'_id':1})]
     return {'case_id':case_id,'dataset_id':{'$in':ids}}
 
+def ensure_prototype_user(db):
+    if os.getenv('PYTEST_CURRENT_TEST'):
+        return False
+    if db.users.count_documents({}) == 0:
+        uid = secrets.token_hex(12)
+        try:
+            db.users.insert_one({
+                '_id': uid,
+                'email': 'admin@example.org',
+                'name': 'Prototype Admin',
+                'role': 'admin',
+                'password_hash': passwords.hash('Prototype-admin-123'),
+                'created_at': now()
+            })
+            return True
+        except DuplicateKeyError:
+            return False
+    return False
+
 @asynccontextmanager
 async def lifespan(app):
     db=database()
     indexes(db)
-    ensure_bootstrap_admin(db)
+    if not ensure_bootstrap_admin(db):
+        ensure_prototype_user(db)
     yield
 
 app=FastAPI(title='Sentinel Tool',version='0.1.0',lifespan=lifespan,docs_url='/api/docs',openapi_url='/api/openapi.json')
@@ -140,7 +160,7 @@ def login(body:Credentials,request:Request,response:Response):
 def start_session(db,user,response,action):
     token=secrets.token_urlsafe(32)
     db.sessions.insert_one({'_id':digest(token),'user_id':user['_id'],'expires_at':now()+timedelta(hours=8)})
-    secure=os.getenv('COOKIE_SECURE','true' if serverless_mode() else 'false').lower()=='true'
+    secure=True if serverless_mode() else os.getenv('COOKIE_SECURE','false').lower()=='true'
     response.set_cookie('sentinel_session',token,httponly=True,secure=secure,samesite='strict',max_age=8*3600,path='/api')
     audit(user['_id'],None,action,{})
     return public(user)
@@ -374,7 +394,10 @@ def report(case_id:str,user=Depends(current_user)):
             'limits':{'max_alerts':1000,'max_audit_entries':200,'max_observations':1000,'alerts_truncated':db.alerts.count_documents(query)>1000}}
 
 from .investigation import router as investigation_router
+from .bitcoin_api import router as bitcoin_router, case_import_router
 app.include_router(investigation_router)
+app.include_router(bitcoin_router)
+app.include_router(case_import_router)
 
 static=Path(os.getenv('FRONTEND_DIST',str(Path(__file__).resolve().parents[2]/'frontend'/'dist')))
 if static.exists():

@@ -85,6 +85,8 @@ def parse(content: bytes, filename: str):
 def analyze(rows, on_stage=None):
     """Record actual stage completion times; blockchain times never stand in for detection time."""
     from bisect import bisect_left, bisect_right
+    from .aml import evaluate_aml_indicators
+    aml_detections_by_tx, aml_scores_by_tx = evaluate_aml_indicators(rows)
     def stage(name,status,**detail):
         stamp=datetime.now(timezone.utc)
         if on_stage: on_stage(name,status,detail,stamp)
@@ -130,18 +132,24 @@ def analyze(rows, on_stage=None):
     alerts=[];features=[]
     for t,vector,score,signals in zip(rows,vectors,scores,detections):
         version=MODEL_VERSION if len(rows)>=40 else 'rules-only-v2'
+        txid=t['txid']
+        tx_aml_signals=aml_detections_by_tx.get(txid,[])
+        tx_aml_score=aml_scores_by_tx.get(txid,0.0)
         if signals:
             reasons=[signal['reason'] for signal in signals]
             reasons.append(f'Feature evidence: {len(t["inputs"])} inputs, {len(t["outputs"])} outputs, total {sum(o["value_sats"] for o in t["outputs"])} satoshis. Descriptive evidence, not exact model attribution.')
-            alerts.append({'txid':t['txid'],'title':signals[0]['title'],
+            alerts.append({'txid':txid,'title':signals[0]['title'],
                 'severity':'high' if signals[0]['stage']=='rule_detection' else 'medium',
                 'score':score,'reasons':reasons,'status':'open','detections':signals,
                 'first_detected_stage':signals[0]['stage'],'detection_stages':list(dict.fromkeys(x['stage'] for x in signals)),
                 'detected_at':signals[0]['detected_at'],'transaction_observed_at':t.get('observed_at'),
                 'transaction_block_time':t.get('block_time'),'created_at':datetime.now(timezone.utc),
                 'alternative':'Payment batching, wallet consolidation, or other ordinary activity may explain this pattern. Ownership and intent remain unknown.',
-                'model_version':version})
-        features.append({'txid':t['txid'],'values':vector,'score':score,'model_version':version,
+                'model_version':version,
+                'aml_indicators':tx_aml_signals,
+                'aml_risk_score':tx_aml_score})
+        features.append({'txid':txid,'values':vector,'score':score,'model_version':version,
+            'aml_indicators':tx_aml_signals,'aml_risk_score':tx_aml_score,
             'feature_names':['input_count','output_count','log_output_total','largest_output_share','log_fee_rate','fee_rate_missing']})
     stage('alert_generation','completed',alerts=len(alerts))
     return sorted(alerts,key=lambda a:(a['severity']=='high',a['score']),reverse=True),features

@@ -191,3 +191,19 @@ def alert_details(case_id:str,alert_id:str,user=Depends(current_user)):
     alert=database().alerts.find_one({**scope(case_id),'_id':alert_id})
     if not alert:raise HTTPException(404,'Alert not found in this case.')
     return public(alert)
+
+class InvestigationRequest(BaseModel):
+    txid: str = Field(min_length=64, max_length=64)
+    query: str = Field(default="Analyze transaction risk, behavioral patterns, and fund lineage.", max_length=500)
+
+@router.post('/{case_id}/investigate')
+def investigate_transaction(case_id: str, body: InvestigationRequest, user=Depends(current_user)):
+    access(case_id, user)
+    db = database()
+    t = db.transactions.find_one({**scope(case_id), 'txid': body.txid})
+    if not t:
+        raise HTTPException(404, 'Transaction not found in completed datasets for this case.')
+    from .agents import run_investigation
+    report = run_investigation(case_id, body.txid, body.query, db)
+    return report
+

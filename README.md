@@ -68,16 +68,40 @@ Container definitions are supplied but were not built in the development environ
 
 ## Native development
 
-Use Python 3.14 (tested), Node.js 24 (tested), pnpm, and a local MongoDB 8.x instance. Python 3.12+ may also work but was not verified.
+### 1. Environment Setup
+
+Set up a Python virtual environment and install all verified dependencies:
+
+**Linux / macOS:**
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r backend/requirements.txt
+```
+
+**Windows (PowerShell / Command Prompt):**
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r backend\requirements.txt
+```
+
+### 2. Environment Variables Configuration
+
+Copy the example environment file:
+```bash
+cp backend/.env.example backend/.env
+# On Windows: copy backend\.env.example backend\.env
+```
+Ensure `GEMINI_API_KEY` and `BITCOIN_API_URL` are configured in `.env`.
+
+### 3. Frontend Setup
 
 From the project root:
-
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r backend/requirements.lock.txt
 cd frontend
-pnpm install --frozen-lockfile --ignore-scripts
-pnpm run build
+npm install
+npm run build
 cd ..
 ```
 

@@ -110,7 +110,10 @@ export default function App() {
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(false),
-    [members, setMembers] = useState<any[]>([]);
+    [members, setMembers] = useState<any[]>([]),
+    [liveQuery, setLiveQuery] = useState(""),
+    [liveLoading, setLiveLoading] = useState(false),
+    [liveStatus, setLiveStatus] = useState("");
   const datasetInput = useRef<HTMLInputElement>(null);
   const activeCase = useRef(current.id);
   activeCase.current = current.id;
@@ -380,6 +383,27 @@ export default function App() {
       setError((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  }
+  async function fetchLiveBitcoin() {
+    if (!current.id || !liveQuery.trim()) return;
+    setLiveLoading(true);
+    setError("");
+    setLiveStatus("");
+    try {
+      const q = liveQuery.trim();
+      const payload = q.length === 64 ? { txid: q } : { address: q };
+      const res = await api(`/cases/${current.id}/import-live`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setLiveStatus(`Ingested ${res.imported_count} live transaction(s) (${res.alerts_count} alerts) via free Bitcoin API.`);
+      setLiveQuery("");
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLiveLoading(false);
     }
   }
   async function report() {
@@ -1086,6 +1110,43 @@ export default function App() {
                   </div>
                 </section>
               </div>
+              <section className="panel live-bitcoin-panel" style={{ marginTop: "1rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <span className="eyebrow" style={{ color: "#79dfb8" }}>LIVE BITCOIN BLOCKCHAIN</span>
+                    <h2 style={{ margin: "0.25rem 0" }}>Fetch from Free Bitcoin API</h2>
+                    <p style={{ margin: 0, color: "var(--muted)", fontSize: "0.9rem" }}>
+                      Fetch on-chain transactions or address histories using free public REST APIs (Blockstream with automatic Mempool.space failover). No MongoDB or API key required.
+                    </p>
+                  </div>
+                  <span style={{ background: "rgba(121, 223, 184, 0.1)", color: "#79dfb8", padding: "4px 10px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 600, border: "1px solid rgba(121, 223, 184, 0.3)" }}>
+                    Free API Active
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.85rem", flexWrap: "wrap" }}>
+                  <input
+                    type="text"
+                    placeholder="Enter Bitcoin TXID (64 hex characters) or Address (bc1q..., 1..., 3...)..."
+                    value={liveQuery}
+                    onChange={(e) => setLiveQuery(e.target.value)}
+                    style={{ flex: 1, minWidth: "260px", background: "rgba(255,255,255,0.05)", border: "1px solid var(--line)", padding: "8px 12px", borderRadius: "6px", color: "inherit" }}
+                    disabled={!canWrite || liveLoading}
+                    onKeyDown={(e) => { if (e.key === "Enter") void fetchLiveBitcoin(); }}
+                  />
+                  <button
+                    className={`button primary ${(!canWrite || !liveQuery.trim() || liveLoading) ? "disabled" : ""}`}
+                    onClick={fetchLiveBitcoin}
+                    disabled={!canWrite || !liveQuery.trim() || liveLoading}
+                  >
+                    {liveLoading ? "Fetching API…" : "Fetch & Ingest Live Data"}
+                  </button>
+                </div>
+                {liveStatus && (
+                  <div style={{ marginTop: "0.75rem", color: "#79dfb8", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Check size={14} /> {liveStatus}
+                  </div>
+                )}
+              </section>
               <section className="panel">
                 <div className="panel-heading">
                   <div>

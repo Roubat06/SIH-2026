@@ -1,0 +1,8 @@
+{
+  "name": "Sentinel - Bitcoin AML & Multi-Agent Investigation",
+  "description": "Deterministic AML transaction monitoring, Isolation Forest anomaly detection, Cytoscape graph investigation, and LangGraph multi-agent analysis with Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
